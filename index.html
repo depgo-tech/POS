@@ -3,6 +3,7 @@
 <head>
   <base target="_top">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <link id="favicon" rel="icon" href="https://z-cdn-media.chatglm.cn/files/dc6c73f6-138a-412e-a264-31156515be3c.png?auth_key=1884567107-72bf1055260449dc8458f2ae15aa7234-0-4942ebeed415e86d99ac303657546dae">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root { --sidebar-bg: #000000; --main-bg: #f4f6f9; --card-bg: #ffffff; --text-dark: #111111; --text-gray: #666666; --border-color: #e0e0e0; --danger: #dc3545; --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; }
@@ -12,13 +13,13 @@
     .login-view { display: flex; justify-content: center; align-items: center; width: 100%; min-height: 100vh; min-height: 100dvh; background: #000; color: #fff; padding: 20px; overflow-y: auto; }
     .login-box { background: #fff; color: #000; padding: 40px; border-radius: 16px; width: 100%; max-width: 360px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); text-align: center; }
     .login-logo-wrap { display: flex; justify-content: center; margin-bottom: 15px; }
-    .login-logo-wrap img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; display: none; border: 1px solid #eee; }
+    .login-logo-wrap img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 1px solid #eee; }
     .login-box h2 { font-size: 24px; margin-bottom: 5px; } .login-box p { font-size: 14px; color: var(--text-gray); margin-bottom: 25px; }
     .login-input { width: 100%; padding: 12px 15px; border: 1px solid #ddd; border-radius: var(--radius-sm); font-size: 14px; outline: none; margin-bottom: 15px; text-align: left; }
     .login-input:focus { border-color: #000; }
     .sidebar { width: 240px; background: var(--sidebar-bg); color: #fff; display: flex; flex-direction: column; flex-shrink: 0; transition: width 0.3s ease; overflow: hidden; } .sidebar.collapsed { width: 0; }
     .sidebar-header { padding: 20px; border-bottom: 1px solid #333; white-space: nowrap; display: flex; align-items: center; gap: 12px; }
-    .sidebar-logo { width: 40px; height: 40px; object-fit: cover; border-radius: 8px; display: none; }
+    .sidebar-logo { width: 40px; height: 40px; object-fit: contain; border-radius: 8px; background: #fff; padding: 2px; }
     .sidebar-title-text { font-size: 18px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .menu-list { padding: 15px 0; flex: 1; }
     .menu-item { padding: 14px 20px; cursor: pointer; color: #ccc; font-size: 14px; font-weight: 500; transition: 0.2s; border-left: 4px solid transparent; white-space: nowrap; display: flex; align-items: center; gap: 12px; }
@@ -106,7 +107,7 @@
 <body>
   <div id="login-view" class="login-view">
     <div class="login-box">
-      <div class="login-logo-wrap"><img id="loginLogo" src="" alt="Logo"></div>
+      <div class="login-logo-wrap"><img id="loginLogo" src="https://z-cdn-media.chatglm.cn/files/dc6c73f6-138a-412e-a264-31156515be3c.png?auth_key=1884567107-72bf1055260449dc8458f2ae15aa7234-0-4942ebeed415e86d99ac303657546dae" alt="Logo"></div>
       <h2>Benk cell</h2>
       <p>Silakan login untuk melanjutkan</p>
       <select id="loginUsername" class="login-input" style="cursor:pointer;"><option value="">Memuat daftar user...</option></select>
@@ -118,7 +119,7 @@
 
   <div id="app" class="hidden" style="width: 100%;">
     <div class="sidebar" id="sidebar">
-      <div class="sidebar-header"><img id="sidebarLogo" class="sidebar-logo" alt="Logo"><div class="sidebar-title-text" id="sidebarTitle">Benk cell</div></div>
+      <div class="sidebar-header"><img id="sidebarLogo" class="sidebar-logo" src="https://z-cdn-media.chatglm.cn/files/dc6c73f6-138a-412e-a264-31156515be3c.png?auth_key=1884567107-72bf1055260449dc8458f2ae15aa7234-0-4942ebeed415e86d99ac303657546dae" alt="Logo"><div class="sidebar-title-text" id="sidebarTitle">Benk cell</div></div>
       <div class="menu-list" id="sbNav"></div>
     </div>
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
@@ -289,7 +290,6 @@
   <script>
     function esc(s) { if (s === null || s === undefined) return ''; return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;'); }
 
-    // Wrapper fetch API untuk Vercel
     function callApi(funcName, args) {
       return fetch(`/api/${funcName}`, {
         method: 'POST',
@@ -320,7 +320,10 @@
       document.getElementById('app').classList.add('hidden');
 
       callApi('getPengaturan', {}).then(function(d) {
-        if(d && d[4]) { document.getElementById('loginLogo').src = d[4]; document.getElementById('loginLogo').style.display = 'block'; }
+        if(d && d[4]) { 
+          document.getElementById('loginLogo').src = d[4];
+          document.getElementById('favicon').href = d[4];
+        }
       }).catch(function(){ });
 
       loadLoginUsernameOptions();
@@ -369,7 +372,11 @@
       renderSidebar();
       callApi('getPengaturan', {}).then(function(d) {
         currentSettings = d || [];
-        if (d && d[4]) { document.getElementById('sidebarLogo').src = d[4]; document.getElementById('sidebarLogo').style.display = 'block'; }
+        if (d && d[4]) { 
+          document.getElementById('sidebarLogo').src = d[4]; 
+          document.getElementById('sidebarLogo').style.display = 'block'; 
+          document.getElementById('favicon').href = d[4]; 
+        }
         document.getElementById('sidebarTitle').innerText = (d && d[0]) || 'Toko Saya';
       }).catch(function(){});
       refreshProdukFromServer(function() {
@@ -828,7 +835,7 @@
       if (!data.logoStruk && currentSettings[5]) data.logoStruk = currentSettings[5];
       callApi('savePengaturan', data).then(function() {
         currentSettings = [data.nama, data.alamat, data.telp, data.footer, data.logoToko, data.logoStruk];
-        if (data.logoToko) { document.getElementById('sidebarLogo').src = data.logoToko; document.getElementById('sidebarLogo').style.display = 'block'; }
+        if (data.logoToko) { document.getElementById('sidebarLogo').src = data.logoToko; document.getElementById('sidebarLogo').style.display = 'block'; document.getElementById('favicon').href = data.logoToko; }
         document.getElementById('sidebarTitle').innerText = data.nama;
         showToast('Pengaturan disimpan!');
         btn.innerText = 'Simpan Pengaturan'; btn.disabled = false;
