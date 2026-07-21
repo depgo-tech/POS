@@ -54,15 +54,11 @@ module.exports = async (req, res) => {
       const data = body;
       if (!data.nama || data.harga === '' || data.harga === undefined) return res.status(400).json({ error: 'Nama dan Harga wajib diisi.' });
       
-      let imeis = [];
-      if (data.imeiText) {
-        imeis = String(data.imeiText).split('\n').map(s => s.trim()).filter(Boolean).map(i => ({ imei: i, status: 'tersedia' }));
-      }
-      
+      // Master Barang tidak lagi mengatur stok/IMEI. Stok diatur 0 default, IMEI dikosongkan.
       const payload = {
         id: data.id, nama: data.nama, varian: data.varian, storage: data.storage, 
-        harga: Number(data.harga), stok: imeis.length > 0 ? imeis.length : (Number(data.stok) || 0), 
-        kategori: data.kategori, foto: data.foto, imeis: imeis,
+        harga: Number(data.harga), stok: 0, 
+        kategori: data.kategori, foto: data.foto, imeis: [],
         is_konsinyasi: data.isKonsinyasi || false,
         mitra_id: data.isKonsinyasi ? data.mitraId : null,
         harga_setoran: data.isKonsinyasi ? (Number(data.hargaSetoran) || 0) : 0
@@ -70,6 +66,10 @@ module.exports = async (req, res) => {
       
       const { data: existing } = await supabase.from('produk').select('id').eq('id', data.id).single();
       if (existing) {
+        // Saat edit, jangan timpa stok dan imeis yang sudah ada di database
+        const { data: currentProd } = await supabase.from('produk').select('stok, imeis').eq('id', data.id).single();
+        payload.stok = currentProd.stok;
+        payload.imeis = currentProd.imeis || [];
         await supabase.from('produk').update(payload).eq('id', data.id);
       } else {
         await supabase.from('produk').insert([payload]);
@@ -267,20 +267,31 @@ module.exports = async (req, res) => {
     }
 
     if (func === 'addStokMasuk') {
-      const { produkId, produkNama, jumlah, keterangan } = body;
-      if (jumlah <= 0) return res.status(400).json({ error: "Jumlah tidak valid" });
-      
-      const { data: prod } = await supabase.from('produk').select('stok').eq('id', produkId).single();
+      const { produkId, produkNama, jumlah, keterangan, imeiText } = body;
+      const { data: prod } = await supabase.from('produk').select('*').eq('id', produkId).single();
       if (prod) {
         let stokLama = Number(prod.stok);
-        let stokBaru = stokLama + Number(jumlah);
-        await supabase.from('produk').update({ stok: stokBaru }).eq('id', produkId);
+        let newImeis = prod.imeis || [];
+        let stokBaru = stokLama;
+        let ket = keterangan || 'Restock';
+
+        if (imeiText) {
+          let newImeiList = String(imeiText).split('\n').map(s => s.trim()).filter(Boolean);
+          newImeiList.forEach(i => newImeis.push({ imei: i, status: 'tersedia' }));
+          stokBaru = stokLama + newImeiList.length;
+          ket = 'Tambah IMEI (' + newImeiList.length + ' unit)';
+          await supabase.from('produk').update({ stok: stokBaru, imeis: newImeis }).eq('id', produkId);
+        } else {
+          if (jumlah <= 0) return res.status(400).json({ error: "Jumlah tidak valid" });
+          stokBaru = stokLama + Number(jumlah);
+          await supabase.from('produk').update({ stok: stokBaru }).eq('id', produkId);
+        }
         
         let id = 'LOG' + Date.now();
         let tgl = new Date().toISOString();
         await supabase.from('stok_log').insert([{
           id, tgl, produk_id: produkId, produk_nama: produkNama,
-          tipe: 'masuk', jumlah: Number(jumlah), stok_sistem: stokLama, stok_fisik: stokBaru, keterangan: keterangan || 'Restock'
+          tipe: 'masuk', jumlah: Number(jumlah) || newImeiList.length, stok_sistem: stokLama, stok_fisik: stokBaru, keterangan: ket
         }]);
         return res.json("Sukses");
       }
@@ -288,21 +299,31 @@ module.exports = async (req, res) => {
     }
 
     if (func === 'addStokKeluar') {
-      const { produkId, produkNama, jumlah, keterangan } = body;
-      if (jumlah <= 0) return res.status(400).json({ error: "Jumlah tidak valid" });
-      
-      const { data: prod } = await supabase.from('produk').select('stok').eq('id', produkId).single();
+      const { produkId, produkNama, jumlah, keterangan, imei } = body;
+      const { data: prod } = await supabase.from('produk').select('*').eq('id', produkId).single();
       if (prod) {
         let stokLama = Number(prod.stok);
-        if (stokLama < Number(jumlah)) return res.status(400).json({ error: "Stok sistem tidak cukup untuk dikeluarkan" });
-        let stokBaru = stokLama - Number(jumlah);
-        await supabase.from('produk').update({ stok: stokBaru }).eq('id', produkId);
+        let newImeis = prod.imeis || [];
+        let stokBaru = stokLama;
+        let ket = keterangan || 'Rusak/Hilang';
+
+        if (imei) {
+          newImeis = newImeis.filter(im => im.imei !== imei);
+          stokBaru = newImeis.length;
+          ket = 'Buang IMEI: ' + imei;
+          await supabase.from('produk').update({ stok: stokBaru, imeis: newImeis }).eq('id', produkId);
+        } else {
+          if (jumlah <= 0) return res.status(400).json({ error: "Jumlah tidak valid" });
+          if (stokLama < Number(jumlah)) return res.status(400).json({ error: "Stok sistem tidak cukup" });
+          stokBaru = stokLama - Number(jumlah);
+          await supabase.from('produk').update({ stok: stokBaru }).eq('id', produkId);
+        }
         
         let id = 'LOG' + Date.now();
         let tgl = new Date().toISOString();
         await supabase.from('stok_log').insert([{
           id, tgl, produk_id: produkId, produk_nama: produkNama,
-          tipe: 'keluar', jumlah: -Number(jumlah), stok_sistem: stokLama, stok_fisik: stokBaru, keterangan: keterangan || 'Rusak/Hilang'
+          tipe: 'keluar', jumlah: -Number(jumlah) || -1, stok_sistem: stokLama, stok_fisik: stokBaru, keterangan: ket
         }]);
         return res.json("Sukses");
       }
@@ -310,7 +331,7 @@ module.exports = async (req, res) => {
     }
 
     if (func === 'submitOpname') {
-      const { items } = body; // array of { id, nama, stokSistem, stokFisik }
+      const { items } = body; 
       let promises = [];
       let logs = [];
       let tgl = new Date().toISOString();
@@ -358,7 +379,7 @@ module.exports = async (req, res) => {
       const { data: prodData } = await supabase.from('produk').select('*');
       let penjualanPeriode = 0, trxPeriode = 0, totalStok = 0, lowStok = [];
       let chartLabels = [], chartData = [], chartDateMap = {};
-      for (let i = 6; i >= 0; i--) {
+      for (let i = 6; i >= 0; i++) {
         let d = new Date(); d.setDate(d.getDate() - i);
         let key = d.toISOString().split('T')[0];
         chartLabels.push(d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' }));
