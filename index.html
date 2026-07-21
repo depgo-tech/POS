@@ -99,6 +99,7 @@
     .table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; } .table-scroll .data-table, .table-scroll table { min-width: 640px; }
     .tt-box { background: #fff0f0; border: 1px dashed #dc3545; padding: 10px; border-radius: 8px; margin-bottom: 10px; }
     .kons-box { background: #f0f8ff; border: 1px dashed #000; padding: 10px; border-radius: 8px; margin-top: 10px; }
+    .card-box { background: #fff; padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 20px; }
     @media (max-width: 1024px) and (min-width: 901px) { .sidebar { width: 200px; } .product-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); } .cart-area { width: 300px; } .stats-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); } }
     @media (max-width: 900px) { body { overflow: auto; } .sidebar { position: fixed; z-index: 999; height: 100%; top: 0; left: 0; width: 260px; } .sidebar.collapsed { width: 0; } .sidebar-overlay.active { display: block; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 998; } .pos-wrapper { flex-direction: column; height: auto; padding: 10px; gap: 12px; } .product-area { height: auto; min-height: 55vh; } .cart-area { width: 100%; height: auto; max-height: 70vh; } .dash-grid { grid-template-columns: 1fr; } .stats-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; } .dashboard-header { flex-direction: column; align-items: stretch; } .dashboard-header > div:last-child { flex-direction: column; align-items: stretch; width: 100%; } .dashboard-header > div:last-child > div { width: 100%; } .date-picker { width: 100%; } .dashboard-header .btn-action { width: 100%; } .data-table { min-width: 640px; } .add-user-row input, .add-user-row select { min-width: 100% !important; flex: none !important; width: 100% !important; } .settings-card { padding: 20px; } .modal-content { padding: 20px; } .btn-action, .cat-btn, .btn-scan, .qty-btn { min-height: 38px; } .checkout-btn, .btn-save, .btn-close-modal, .btn-danger-modal { min-height: 46px; } }
     @media (max-width: 768px) { .topbar h3 { font-size: 16px; } .user-info { gap: 8px; } .btn-logout { padding: 8px 10px; font-size: 12px; } }
@@ -239,30 +240,28 @@
 
         <div id="view-konsinyasi" class="view" style="padding: 25px;">
           <div class="dashboard-header"><div><h2>Konsinyasi (Titip Jual)</h2><p>Catatan hutang kepada mitra/supplier.</p></div></div>
-          <div class="settings-card">
-            <h3 style="margin-bottom: 15px; font-size: 16px;">Tambah Mitra Baru</h3>
-            <div class="add-user-row" style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
+          <div class="card-box">
+            <div class="add-user-row" style="display:flex; gap:10px; flex-wrap:wrap;">
               <input type="text" id="newMitraNama" class="search-box" placeholder="Nama Mitra / Supplier" style="flex:1; min-width:150px;">
               <input type="text" id="newMitraTelp" class="search-box" placeholder="No. WhatsApp" style="flex:1; min-width:120px;">
-              <button class="btn-add" style="margin:0;" onclick="addMitra()">+ Tambah</button>
+              <button class="btn-add" style="margin:0;" onclick="addMitra()">+ Tambah Mitra</button>
             </div>
-            <div class="table-scroll"><table class="data-table"><thead><tr><th>Nama Mitra</th><th>No. Telp</th><th>Total Hutang</th><th>Aksi</th></tr></thead><tbody id="tableMitra"></tbody></table></div>
           </div>
+          <div class="table-scroll"><table class="data-table"><thead><tr><th>Nama Mitra</th><th>No. Telp</th><th>Total Hutang</th><th>Aksi</th></tr></thead><tbody id="tableMitra"></tbody></table></div>
         </div>
 
         <div id="view-users" class="view" style="padding: 25px;">
           <div class="dashboard-header"><div><h2>Manajemen User</h2><p>Tambah kasir atau kelola akses toko.</p></div></div>
-          <div class="settings-card">
-            <h3 style="margin-bottom: 15px; font-size: 16px;">Tambah User Baru</h3>
-            <div class="add-user-row" style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
+          <div class="card-box">
+            <div class="add-user-row" style="display:flex; gap:10px; flex-wrap:wrap;">
               <input type="text" id="newUsername" class="search-box" placeholder="Username" style="flex:1; min-width:120px;">
               <input type="password" id="newPassword" class="search-box" placeholder="Password" style="flex:1; min-width:120px;">
               <input type="text" id="newFullName" class="search-box" placeholder="Nama Lengkap" style="flex:1; min-width:150px;">
               <select id="newUserRole" class="search-box" style="width:120px; flex:none;"><option value="user">Kasir</option><option value="admin">Owner</option></select>
-              <button class="btn-add" style="margin:0;" onclick="addUser()">+ Tambah</button>
+              <button class="btn-add" style="margin:0;" onclick="addUser()">+ Tambah User</button>
             </div>
-            <div class="table-scroll"><table class="data-table"><thead><tr><th>Nama</th><th>Username</th><th>Role</th><th>Aksi</th></tr></thead><tbody id="tableUsers"></tbody></table></div>
           </div>
+          <div class="table-scroll"><table class="data-table"><thead><tr><th>Nama</th><th>Username</th><th>Role</th><th>Aksi</th></tr></thead><tbody id="tableUsers"></tbody></table></div>
         </div>
         
         <div id="view-pengaturan" class="view" style="padding: 25px;">
@@ -453,15 +452,6 @@
         document.getElementById('sidebarTitle').innerText = (d && d[0]) || 'Toko Saya';
       }).catch(function(){});
       
-      // Load Mitra for dropdown in Product Form
-      if (currentUser.role === 'admin') {
-        callApi('getMitra', {}).then(function(data) {
-          allMitra = data || [];
-          let select = document.getElementById('produkMitraId');
-          select.innerHTML = '<option value="">Pilih Mitra...</option>' + allMitra.map(m => `<option value="${m.id}">${esc(m.nama)}</option>`).join('');
-        });
-      }
-
       refreshProdukFromServer(function() {
         if (currentUser.role === 'admin') navigate('dashboard', document.querySelector('.menu-item'));
         else navigate('pos', document.querySelector('.menu-item'));
@@ -621,7 +611,7 @@
 
     function loadKonsinyasi() {
       callApi('getMitra', {}).then(function(data) {
-        allMitra = data || [];
+        allMitra = data || []; // Update global variabel
         let tbody = document.getElementById('tableMitra');
         let rows = allMitra.map(function(m) {
           let actions = '<button class="btn-action" onclick="promptBayarHutang(\'' + esc(m.id) + '\', \'' + esc(m.nama) + '\', ' + m.hutang + ')">Bayar/Setor</button>';
@@ -709,8 +699,14 @@
       document.getElementById('previewProdukFoto').style.display = 'none';
       document.getElementById('produkIsKonsinyasi').checked = false;
       toggleKonsinyasiForm();
-      document.getElementById('produkMitraId').value = '';
       document.getElementById('produkHargaSetoran').value = '';
+
+      // FIX: Selalu muat ulang daftar mitra dari memori (allMitra) setiap kali form dibuka
+      let select = document.getElementById('produkMitraId');
+      select.innerHTML = '<option value="">Pilih Mitra...</option>';
+      allMitra.forEach(function(m) {
+        select.innerHTML += '<option value="' + m.id + '">' + esc(m.nama) + '</option>';
+      });
       
       if (id) {
         document.getElementById('modalProdukTitle').innerText = 'Edit Produk';
