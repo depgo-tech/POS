@@ -221,7 +221,12 @@
         </div>
 
         <div id="view-garansi" class="view" style="padding: 25px;">
-          <div class="dashboard-header"><div><h2>Data Garansi</h2><p>Daftar HP yang terjual beserta masa garansinya.</p></div></div>
+          <div class="dashboard-header">
+            <div><h2>Data Garansi</h2><p>Daftar HP yang terjual beserta masa garansinya.</p></div>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <input type="text" id="searchGaransi" class="search-box" placeholder="Cari Invoice / IMEI / Nama..." oninput="renderGaransiTable()" style="margin-bottom: 0; min-width: 250px;">
+            </div>
+          </div>
           <div class="data-table table-scroll">
             <table style="width: 100%; border-collapse: collapse; min-width: 640px;">
               <thead><tr><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Invoice</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Tgl Beli</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Pelanggan</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Produk</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">IMEI</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Garansi Sampai</th></tr></thead>
@@ -344,6 +349,7 @@
     }
 
     let currentUser = null; let allProduk = []; let keranjang = []; let kategoriList = ['Semua']; let salesChart = null; let currentSettings = []; let targetDeleteId = null; let targetDeleteType = ''; let activeCategory = 'Semua'; let isCheckingOut = false; 
+    let allGaransiData = []; // Variabel global untuk menyimpan data garansi
 
     var MENU = [
       { page:'dashboard', label:'Dashboard', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>', adminOnly:true },
@@ -542,16 +548,37 @@
       let t = document.getElementById('garansiTable');
       t.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999; padding:20px;">Memuat data garansi...</td></tr>';
       callApi('getGaransi', {}).then(function (d) {
-        if (!d || d.length === 0) { t.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999; padding:20px;">Belum ada data garansi</td></tr>'; return; }
-        let html = '';
-        d.forEach(function (r) {
-          let dateStr = new Date(r.tgl).toLocaleDateString('id-ID');
-          let expStr = new Date(r.exp).toLocaleDateString('id-ID');
-          let isExp = new Date(r.exp) < new Date();
-          html += '<tr style="border-bottom:1px solid #f5f5f5;"><td style="padding:12px; font-weight:500;">' + esc(r.invoice) + '</td><td style="padding:12px; color:var(--text-gray);">' + esc(dateStr) + '</td><td style="padding:12px;">' + esc(r.pelanggan) + '</td><td style="padding:12px; font-size:12px;">' + esc(r.produk) + '</td><td style="padding:12px; font-size:12px;">' + esc(r.imei) + '</td><td style="padding:12px; color:' + (isExp ? 'red' : 'green') + '; font-weight:600;">' + esc(expStr) + '</td></tr>';
-        });
-        t.innerHTML = html;
-      }).catch(function(err) { t.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red; padding:20px;">Error: ' + esc(err.message) + '</td></tr>'; });
+        allGaransiData = d || [];
+        renderGaransiTable();
+      }).catch(function(err) { 
+        allGaransiData = [];
+        t.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red; padding:20px;">Error: ' + esc(err.message) + '</td></tr>'; 
+      });
+    }
+
+    function renderGaransiTable() {
+      let t = document.getElementById('garansiTable');
+      let searchTerm = (document.getElementById('searchGaransi').value || '').toLowerCase();
+      
+      let filtered = allGaransiData.filter(function(r) {
+        return String(r.invoice).toLowerCase().includes(searchTerm) || 
+               String(r.imei).toLowerCase().includes(searchTerm) ||
+               String(r.produk).toLowerCase().includes(searchTerm) ||
+               String(r.pelanggan).toLowerCase().includes(searchTerm);
+      });
+
+      if (filtered.length === 0) { 
+        t.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999; padding:20px;">Data tidak ditemukan</td></tr>'; 
+        return; 
+      }
+      let html = '';
+      filtered.forEach(function (r) {
+        let dateStr = new Date(r.tgl).toLocaleDateString('id-ID');
+        let expStr = new Date(r.exp).toLocaleDateString('id-ID');
+        let isExp = new Date(r.exp) < new Date();
+        html += '<tr style="border-bottom:1px solid #f5f5f5;"><td style="padding:12px; font-weight:500;">' + esc(r.invoice) + '</td><td style="padding:12px; color:var(--text-gray);">' + esc(dateStr) + '</td><td style="padding:12px;">' + esc(r.pelanggan) + '</td><td style="padding:12px; font-size:12px;">' + esc(r.produk) + '</td><td style="padding:12px; font-size:12px;">' + esc(r.imei) + '</td><td style="padding:12px; color:' + (isExp ? 'red' : 'green') + '; font-weight:600;">' + esc(expStr) + '</td></tr>';
+      });
+      t.innerHTML = html;
     }
 
     function previewImage(input, previewId) {
