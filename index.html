@@ -359,7 +359,7 @@
         <span id="kkTotalSetoran">Rp 0</span>
       </div>
 
-      <button class="btn-save" onclick="simpanKonsinyasiKeluar()">Kirim & Catat Piutang</button>
+      <button class="btn-save" id="btnSaveKonsinyasi" onclick="simpanKonsinyasiKeluar()">Kirim & Catat Piutang</button>
       <button class="btn-close-modal" onclick="closeModal('modalKonsinyasiKeluar')">Batal</button>
     </div>
   </div>
@@ -372,7 +372,7 @@
         <label>Jumlah Uang</label>
         <input type="number" id="modalFinInput" style="width:100%; padding:12px; font-size:16px; text-align:right; border:1px solid #ddd; border-radius:8px;" placeholder="0">
       </div>
-      <button class="btn-save" onclick="submitModalFinansial()">Proses</button>
+      <button class="btn-save" id="btnModalFinansial" onclick="submitModalFinansial()">Proses</button>
       <button class="btn-close-modal" onclick="closeModal('modalFinansial')">Batal</button>
     </div>
   </div>
@@ -384,7 +384,7 @@
       <div class="form-group" style="text-align:left;">
         <input type="text" id="modalPromptTextInput" style="width:100%; padding:12px; font-size:16px; border:1px solid #ddd; border-radius:8px;" placeholder="">
       </div>
-      <button class="btn-save" onclick="submitModalPromptText()">Simpan</button>
+      <button class="btn-save" id="btnModalPromptText" onclick="submitModalPromptText()">Simpan</button>
       <button class="btn-close-modal" onclick="closeModal('modalPromptText')">Batal</button>
     </div>
   </div>
@@ -749,18 +749,29 @@
         document.getElementById('modalFinDesc').innerText = 'Mitra: ' + nama + '\nSisa Piutang: Rp ' + Number(sisa).toLocaleString('id-ID');
       }
       document.getElementById('modalFinInput').value = sisa;
+      document.getElementById('btnModalFinansial').disabled = false;
+      document.getElementById('btnModalFinansial').innerText = 'Proses';
       document.getElementById('modalFinansial').style.display = 'flex';
     }
 
     function submitModalFinansial() {
       let jumlah = parseFloat(document.getElementById('modalFinInput').value) || 0;
       if (jumlah <= 0) { showToast('Jumlah tidak valid!', true); return; }
+      
+      let btn = document.getElementById('btnModalFinansial');
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner-white"></div> Memproses...';
+
       let apiFunc = modalFinContext.type === 'bayar_hutang' ? 'bayarHutangMitra' : 'lunasiKonsinyasiKeluar';
       callApi(apiFunc, { id: modalFinContext.id, jumlah: jumlah }).then(function() {
         showToast('Transaksi berhasil dicatat!');
         closeModal('modalFinansial');
         loadKonsinyasi();
-      }).catch(function(err) { showToast('Gagal: ' + (err && err.message ? err.message : ''), true); });
+      }).catch(function(err) { 
+        showToast('Gagal: ' + (err && err.message ? err.message : ''), true); 
+        btn.disabled = false;
+        btn.innerText = 'Proses';
+      });
     }
 
     function openKonsinyasiKeluarModal() {
@@ -771,6 +782,8 @@
       document.getElementById('kkHargaSetoran').value = '';
       updateKonsinyasiImeiOptions();
       renderKeranjangKonsinyasi();
+      document.getElementById('btnSaveKonsinyasi').disabled = false;
+      document.getElementById('btnSaveKonsinyasi').innerText = 'Kirim & Catat Piutang';
       document.getElementById('modalKonsinyasiKeluar').style.display = 'flex';
     }
 
@@ -838,12 +851,20 @@
       let mitraNama = allMitra.find(m => m.id === mitraId).nama;
       let total = keranjangKonsinyasi.reduce((s, i) => s + (i.hargaSetoran * i.qty), 0);
 
+      let btn = document.getElementById('btnSaveKonsinyasi');
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner-white"></div> Mengirim...';
+
       callApi('addKonsinyasiKeluar', { mitraId: mitraId, mitraNama: mitraNama, items: keranjangKonsinyasi, total: total }).then(function() {
         showToast('Barang berhasil dikirim dan piutang dicatat!');
         closeModal('modalKonsinyasiKeluar');
         refreshProdukFromServer();
         loadKonsinyasi();
-      }).catch(function(err) { showToast('Gagal: ' + (err && err.message ? err.message : ''), true); });
+      }).catch(function(err) { 
+        showToast('Gagal: ' + (err && err.message ? err.message : ''), true); 
+        btn.disabled = false;
+        btn.innerText = 'Kirim & Catat Piutang';
+      });
     }
 
     function previewImage(input, previewId) {
@@ -1278,16 +1299,27 @@
       document.getElementById('modalPromptTextTitle').innerText = 'Reset Password';
       document.getElementById('modalPromptTextDesc').innerText = 'Masukkan password baru untuk ' + nama;
       document.getElementById('modalPromptTextInput').value = '';
+      document.getElementById('btnModalPromptText').disabled = false;
+      document.getElementById('btnModalPromptText').innerText = 'Simpan';
       document.getElementById('modalPromptText').style.display = 'flex';
     }
 
     function submitModalPromptText() {
       let val = document.getElementById('modalPromptTextInput').value.trim();
       if (!val || val.length < 4) { showToast('Password minimal 4 karakter!', true); return; }
+      
+      let btn = document.getElementById('btnModalPromptText');
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner-white"></div> Menyimpan...';
+
       callApi('resetUserPassword', { id: modalPromptTextContext.id, newPassword: val }).then(function(res) { 
         showToast('Password berhasil direset!'); 
         closeModal('modalPromptText');
-      }).catch(function(err) { showToast('Gagal reset password: ' + (err && err.message ? err.message : ''), true); });
+      }).catch(function(err) { 
+        showToast('Gagal reset password: ' + (err && err.message ? err.message : ''), true); 
+        btn.disabled = false;
+        btn.innerText = 'Simpan';
+      });
     }
 
     function addUser() {
