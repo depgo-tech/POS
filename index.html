@@ -17,6 +17,9 @@
     .login-box h2 { font-size: 24px; margin-bottom: 5px; } .login-box p { font-size: 14px; color: var(--text-gray); margin-bottom: 25px; }
     .login-input { width: 100%; padding: 12px 15px; border: 1px solid #ddd; border-radius: var(--radius-sm); font-size: 14px; outline: none; margin-bottom: 15px; text-align: left; }
     .login-input:focus { border-color: #000; }
+    .password-wrap { position: relative; margin-bottom: 15px; }
+    .password-wrap .login-input { margin-bottom: 0; padding-right: 40px; }
+    .toggle-pass { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #666; display: flex; align-items: center; }
     .sidebar { width: 240px; background: var(--sidebar-bg); color: #fff; display: flex; flex-direction: column; flex-shrink: 0; transition: width 0.3s ease; overflow: hidden; } .sidebar.collapsed { width: 0; }
     .sidebar-header { padding: 20px; border-bottom: 1px solid #333; white-space: nowrap; display: flex; align-items: center; gap: 12px; }
     .sidebar-logo { width: 40px; height: 40px; object-fit: contain; border-radius: 8px; background: #fff; padding: 2px; }
@@ -115,7 +118,15 @@
       <h2>Benk cell</h2>
       <p>Silakan login untuk melanjutkan</p>
       <select id="loginUsername" class="login-input" style="cursor:pointer;" autocomplete="off"><option value="">Memuat daftar user...</option></select>
-      <input type="password" id="loginPassword" class="login-input" placeholder="Password" autocomplete="off" onkeydown="if(event.key==='Enter') doLogin()">
+      
+      <div class="password-wrap">
+        <input type="password" id="loginPassword" class="login-input" placeholder="Password" autocomplete="off" onkeydown="if(event.key==='Enter') doLogin()">
+        <div id="togglePassBtn" class="toggle-pass" onclick="togglePassVisibility()">
+          <svg id="eyeOpen" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          <svg id="eyeClosed" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+        </div>
+      </div>
+
       <button class="btn-save" id="btnLogin" onclick="doLogin()">Login</button>
       <p id="loginError" style="color: #dc3545; text-align: center; margin-top: 15px; font-size: 13px; display: none;"></p>
     </div>
@@ -256,7 +267,7 @@
 
           <div class="card-box" style="margin-top:20px;">
             <h3 style="margin-bottom: 15px; font-size: 16px;">Riwayat Titip Keluar (Piutang)</h3>
-            <div class="table-scroll"><table class="data-table"><thead><tr><th>Tgl</th><th>Mitra</th><th>Items Dikirim</th><th>Total Setoran</th><th>Status</th></tr></thead><tbody id="tableKonsinyasiKeluar"></tbody></table></div>
+            <div class="table-scroll"><table class="data-table"><thead><tr><th>Tgl</th><th>Mitra</th><th>Items Dikirim</th><th>Total Setoran</th><th>Terbayar</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="tableKonsinyasiKeluar"></tbody></table></div>
           </div>
         </div>
 
@@ -353,6 +364,31 @@
     </div>
   </div>
   
+  <div class="modal-overlay" id="modalFinansial">
+    <div class="modal-content" style="max-width: 400px; text-align: center;">
+      <h3 id="modalFinTitle" style="border:none;">Pembayaran</h3>
+      <p id="modalFinDesc" style="font-size:14px; color:#666; margin-bottom:20px; white-space: pre-line;"></p>
+      <div class="form-group" style="text-align:left;">
+        <label>Jumlah Uang</label>
+        <input type="number" id="modalFinInput" style="width:100%; padding:12px; font-size:16px; text-align:right; border:1px solid #ddd; border-radius:8px;" placeholder="0">
+      </div>
+      <button class="btn-save" onclick="submitModalFinansial()">Proses</button>
+      <button class="btn-close-modal" onclick="closeModal('modalFinansial')">Batal</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalPromptText">
+    <div class="modal-content" style="max-width: 400px; text-align: center;">
+      <h3 id="modalPromptTextTitle" style="border:none;">Input</h3>
+      <p id="modalPromptTextDesc" style="font-size:14px; color:#666; margin-bottom:20px;"></p>
+      <div class="form-group" style="text-align:left;">
+        <input type="text" id="modalPromptTextInput" style="width:100%; padding:12px; font-size:16px; border:1px solid #ddd; border-radius:8px;" placeholder="">
+      </div>
+      <button class="btn-save" onclick="submitModalPromptText()">Simpan</button>
+      <button class="btn-close-modal" onclick="closeModal('modalPromptText')">Batal</button>
+    </div>
+  </div>
+  
   <div class="modal-overlay" id="modalVariant">
     <div class="modal-content">
       <h3 id="modalVariantTitle">Pilih Varian</h3>
@@ -420,7 +456,9 @@
     let currentUser = null; let allProduk = []; let keranjang = []; let kategoriList = ['Semua']; let salesChart = null; let currentSettings = []; let targetDeleteId = null; let targetDeleteType = ''; let activeCategory = 'Semua'; let isCheckingOut = false; 
     let allGaransiData = []; 
     let allMitra = [];
-    let keranjangKonsinyasi = []; // Keranjang untuk titip keluar
+    let keranjangKonsinyasi = []; 
+    let modalFinContext = null;
+    let modalPromptTextContext = null;
 
     var MENU = [
       { page:'dashboard', label:'Dashboard', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>', adminOnly:true },
@@ -453,6 +491,17 @@
     function clearSavedSession() { try { localStorage.removeItem('pos_user_id'); sessionStorage.removeItem('pos_user_id'); } catch(e) {} }
     function showLogin() { document.getElementById('login-view').style.display = 'flex'; document.getElementById('app').classList.add('hidden'); document.getElementById('app').style.display = 'none'; }
     function showApp() { document.getElementById('login-view').style.display = 'none'; document.getElementById('app').classList.remove('hidden'); document.getElementById('app').style.display = 'flex'; if (window.innerWidth <= 768) { document.getElementById('sidebar').classList.add('collapsed'); } initApp(); }
+
+    function togglePassVisibility() {
+      let input = document.getElementById('loginPassword');
+      let eyeOpen = document.getElementById('eyeOpen');
+      let eyeClosed = document.getElementById('eyeClosed');
+      if (input.type === 'password') {
+        input.type = 'text'; eyeOpen.style.display = 'none'; eyeClosed.style.display = 'block';
+      } else {
+        input.type = 'password'; eyeOpen.style.display = 'block'; eyeClosed.style.display = 'none';
+      }
+    }
 
     function loadLoginUsernameOptions() {
       callApi('getUsernamesForLogin', {}).then(function(list) {
@@ -561,7 +610,7 @@
     }
 
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') { closeModal('modalProduk'); closeModal('modalStruk'); closeModal('modalVariant'); closeModal('modalImei'); closeModal('modalConfirm'); closeModal('modalKonsinyasiKeluar'); closeScanner(); }
+      if (e.key === 'Escape') { closeModal('modalProduk'); closeModal('modalStruk'); closeModal('modalVariant'); closeModal('modalImei'); closeModal('modalConfirm'); closeModal('modalKonsinyasiKeluar'); closeModal('modalFinansial'); closeModal('modalPromptText'); closeScanner(); }
       if (e.key === 'Enter') {
         let active = document.activeElement;
         if (active.tagName !== 'INPUT' && active.tagName !== 'SELECT' && active.tagName !== 'TEXTAREA') { if (document.getElementById('btnCheckout') && !document.getElementById('btnCheckout').disabled) { processCheckout(); } }
@@ -661,8 +710,7 @@
         allMitra = data || []; 
         let tbody = document.getElementById('tableMitra');
         let rows = allMitra.map(function(m) {
-          let actions = '<button class="btn-action" onclick="promptBayarHutang(\'' + esc(m.id) + '\', \'' + esc(m.nama) + '\', ' + m.hutang + ')">Bayar Hutang</button>';
-          actions += '<button class="btn-action" onclick="promptTerimaPiutang(\'' + esc(m.id) + '\', \'' + esc(m.nama) + '\', ' + m.piutang + ')">Terima Piutang</button>';
+          let actions = '<button class="btn-action" onclick="openModalFinansial(\'bayar_hutang\', \'' + esc(m.id) + '\', \'' + esc(m.nama) + '\', ' + m.hutang + ')">Bayar Hutang</button>';
           return '<tr><td style="font-weight:500;">' + esc(m.nama) + '</td><td>' + esc(m.telp) + '</td><td style="color:' + (m.hutang > 0 ? 'red' : 'green') + '; font-weight:600;">Rp ' + Number(m.hutang).toLocaleString('id-ID') + '</td><td style="color:' + (m.piutang > 0 ? 'blue' : 'green') + '; font-weight:600;">Rp ' + Number(m.piutang).toLocaleString('id-ID') + '</td><td>' + actions + '</td></tr>';
         });
         tbody.innerHTML = rows.join('');
@@ -670,10 +718,13 @@
 
       callApi('getKonsinyasiKeluar', {}).then(function(data) {
         let tbody = document.getElementById('tableKonsinyasiKeluar');
-        if (!data || data.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#999; padding:20px;">Belum ada barang dititipkan keluar</td></tr>'; return; }
+        if (!data || data.length === 0) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999; padding:20px;">Belum ada barang dititipkan keluar</td></tr>'; return; }
         let rows = data.map(function(k) {
           let dateStr = new Date(k.tgl).toLocaleDateString('id-ID');
-          return '<tr><td>' + esc(dateStr) + '</td><td>' + esc(k.mitra_nama) + '</td><td style="font-size:12px;">' + esc(k.items) + '</td><td font-weight:600;">Rp ' + Number(k.total).toLocaleString('id-ID') + '</td><td>' + esc(k.status) + '</td></tr>';
+          let sisa = Number(k.total) - Number(k.terbayar || 0);
+          let statusColor = k.status === 'Lunas' ? 'green' : 'red';
+          let actions = k.status !== 'Lunas' ? '<button class="btn-action" onclick="openModalFinansial(\'terima_piutang\', \'' + esc(k.id) + '\', \'' + esc(k.mitra_nama) + '\', ' + sisa + ')">Terima Setoran</button>' : '<span style="color:#999; font-size:11px;">Lunas</span>';
+          return '<tr><td>' + esc(dateStr) + '</td><td>' + esc(k.mitra_nama) + '</td><td style="font-size:12px;">' + esc(k.items) + '</td><td font-weight:600;">Rp ' + Number(k.total).toLocaleString('id-ID') + '</td><td>Rp ' + Number(k.terbayar || 0).toLocaleString('id-ID') + '</td><td style="color:' + statusColor + '; font-weight:600;">' + esc(k.status) + '</td><td>' + actions + '</td></tr>';
         });
         tbody.innerHTML = rows.join('');
       }).catch(function(){});
@@ -688,24 +739,26 @@
       }).catch(function(err) { showToast('Gagal menambah mitra: ' + (err && err.message ? err.message : ''), true); });
     }
 
-    function promptBayarHutang(id, nama, hutang) {
-      let jmlStr = prompt('Masukkan jumlah uang yang disetor ke ' + nama + ' (Titip Masuk):\n(Saat ini hutang: Rp ' + Number(hutang).toLocaleString('id-ID') + ')');
-      if (jmlStr === null) return;
-      let jumlah = parseFloat(jmlStr) || 0;
-      if (jumlah <= 0) { showToast('Jumlah tidak valid!', true); return; }
-      callApi('bayarHutangMitra', { id: id, jumlah: jumlah }).then(function() {
-        showToast('Pembayaran hutang ke ' + nama + ' berhasil dicatat!');
-        loadKonsinyasi();
-      }).catch(function(err) { showToast('Gagal: ' + (err && err.message ? err.message : ''), true); });
+    function openModalFinansial(type, id, nama, sisa) {
+      modalFinContext = { type, id, nama };
+      if (type === 'bayar_hutang') {
+        document.getElementById('modalFinTitle').innerText = 'Bayar Hutang (Titip Masuk)';
+        document.getElementById('modalFinDesc').innerText = 'Mitra: ' + nama + '\nSisa Hutang: Rp ' + Number(sisa).toLocaleString('id-ID');
+      } else if (type === 'terima_piutang') {
+        document.getElementById('modalFinTitle').innerText = 'Terima Setoran (Titip Keluar)';
+        document.getElementById('modalFinDesc').innerText = 'Mitra: ' + nama + '\nSisa Piutang: Rp ' + Number(sisa).toLocaleString('id-ID');
+      }
+      document.getElementById('modalFinInput').value = sisa;
+      document.getElementById('modalFinansial').style.display = 'flex';
     }
 
-    function promptTerimaPiutang(id, nama, piutang) {
-      let jmlStr = prompt('Masukkan jumlah uang yang diterima dari ' + nama + ' (Titip Keluar):\n(Saat ini piutang: Rp ' + Number(piutang).toLocaleString('id-ID') + ')');
-      if (jmlStr === null) return;
-      let jumlah = parseFloat(jmlStr) || 0;
+    function submitModalFinansial() {
+      let jumlah = parseFloat(document.getElementById('modalFinInput').value) || 0;
       if (jumlah <= 0) { showToast('Jumlah tidak valid!', true); return; }
-      callApi('terimaPiutangMitra', { id: id, jumlah: jumlah }).then(function() {
-        showToast('Penerimaan piutang dari ' + nama + ' berhasil dicatat!');
+      let apiFunc = modalFinContext.type === 'bayar_hutang' ? 'bayarHutangMitra' : 'lunasiKonsinyasiKeluar';
+      callApi(apiFunc, { id: modalFinContext.id, jumlah: jumlah }).then(function() {
+        showToast('Transaksi berhasil dicatat!');
+        closeModal('modalFinansial');
         loadKonsinyasi();
       }).catch(function(err) { showToast('Gagal: ' + (err && err.message ? err.message : ''), true); });
     }
@@ -1212,7 +1265,7 @@
         let tbody = document.getElementById('tableUsers');
         let rows = data.map(function(u) {
           let roleBadge = u.role === 'admin' ? 'Owner' : 'Kasir';
-          let actions = '<button class="btn-action" onclick="promptResetPassword(\'' + esc(u.id) + '\', \'' + esc(u.full_name) + '\')">Reset Password</button>';
+          let actions = '<button class="btn-action" onclick="openModalPromptText(\'reset_pass\', \'' + esc(u.id) + '\', \'' + esc(u.full_name) + '\')">Reset Password</button>';
           if (currentUser.id !== u.id) { actions += '<button class="btn-action danger" onclick="confirmDelete(\'' + esc(u.id) + '\', \'user\')">Hapus</button>'; } else { actions += '<span style="color:#999; font-size:11px;">(Akun Sendiri)</span>'; }
           return '<tr><td style="font-weight:500;">' + esc(u.full_name) + '</td><td>' + esc(u.username) + '</td><td>' + esc(roleBadge) + '</td><td>' + actions + '</td></tr>';
         });
@@ -1220,12 +1273,21 @@
       }).catch(function(err) { showToast('Gagal memuat user: ' + (err && err.message ? err.message : ''), true); });
     }
 
-    function promptResetPassword(userId, fullName) {
-      let newPass = prompt('Masukkan password BARU untuk ' + fullName + ' (minimal 4 karakter):');
-      if (newPass === null) return;
-      newPass = newPass.trim();
-      if (newPass.length < 4) { showToast('Password minimal 4 karakter!', true); return; }
-      callApi('resetUserPassword', { id: userId, newPassword: newPass }).then(function(res) { showToast('Password ' + fullName + ' berhasil direset!'); }).catch(function(err) { showToast('Gagal reset password: ' + (err && err.message ? err.message : ''), true); });
+    function openModalPromptText(type, id, nama) {
+      modalPromptTextContext = { type, id, nama };
+      document.getElementById('modalPromptTextTitle').innerText = 'Reset Password';
+      document.getElementById('modalPromptTextDesc').innerText = 'Masukkan password baru untuk ' + nama;
+      document.getElementById('modalPromptTextInput').value = '';
+      document.getElementById('modalPromptText').style.display = 'flex';
+    }
+
+    function submitModalPromptText() {
+      let val = document.getElementById('modalPromptTextInput').value.trim();
+      if (!val || val.length < 4) { showToast('Password minimal 4 karakter!', true); return; }
+      callApi('resetUserPassword', { id: modalPromptTextContext.id, newPassword: val }).then(function(res) { 
+        showToast('Password berhasil direset!'); 
+        closeModal('modalPromptText');
+      }).catch(function(err) { showToast('Gagal reset password: ' + (err && err.message ? err.message : ''), true); });
     }
 
     function addUser() {
