@@ -156,7 +156,6 @@ module.exports = async (req, res) => {
       }
 
       await Promise.all(updatePromises);
-
       return res.json({ status: "Sukses", idTrx: idTrx, total: totalAkhir });
     }
 
@@ -186,9 +185,7 @@ module.exports = async (req, res) => {
 
     if (func === 'deleteMitra') {
       const { id } = body;
-      // Lepas status konsinyasi pada produk yang terhubung dengan mitra ini
       await supabase.from('produk').update({ is_konsinyasi: false, mitra_id: null, harga_setoran: 0 }).eq('mitra_id', id);
-      // Hapus mitra
       await supabase.from('mitra').delete().eq('id', id);
       return res.json("Sukses");
     }
@@ -236,7 +233,6 @@ module.exports = async (req, res) => {
       if (mitra) {
         await supabase.from('mitra').update({ piutang: Number(mitra.piutang) + Number(total) }).eq('id', mitraId);
       }
-      
       return res.json("Sukses");
     }
 
@@ -264,6 +260,83 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: "Data tidak ditemukan" });
     }
 
+    // --- FITUR STOK MASUK, KELUAR, OPNAME ---
+    if (func === 'getStokLog') {
+      const { data } = await supabase.from('stok_log').select('*').order('tgl', { ascending: false }).limit(100);
+      return res.json(data || []);
+    }
+
+    if (func === 'addStokMasuk') {
+      const { produkId, produkNama, jumlah, keterangan } = body;
+      if (jumlah <= 0) return res.status(400).json({ error: "Jumlah tidak valid" });
+      
+      const { data: prod } = await supabase.from('produk').select('stok').eq('id', produkId).single();
+      if (prod) {
+        let stokLama = Number(prod.stok);
+        let stokBaru = stokLama + Number(jumlah);
+        await supabase.from('produk').update({ stok: stokBaru }).eq('id', produkId);
+        
+        let id = 'LOG' + Date.now();
+        let tgl = new Date().toISOString();
+        await supabase.from('stok_log').insert([{
+          id, tgl, produk_id: produkId, produk_nama: produkNama,
+          tipe: 'masuk', jumlah: Number(jumlah), stok_sistem: stokLama, stok_fisik: stokBaru, keterangan: keterangan || 'Restock'
+        }]);
+        return res.json("Sukses");
+      }
+      return res.status(400).json({ error: "Produk tidak ditemukan" });
+    }
+
+    if (func === 'addStokKeluar') {
+      const { produkId, produkNama, jumlah, keterangan } = body;
+      if (jumlah <= 0) return res.status(400).json({ error: "Jumlah tidak valid" });
+      
+      const { data: prod } = await supabase.from('produk').select('stok').eq('id', produkId).single();
+      if (prod) {
+        let stokLama = Number(prod.stok);
+        if (stokLama < Number(jumlah)) return res.status(400).json({ error: "Stok sistem tidak cukup untuk dikeluarkan" });
+        let stokBaru = stokLama - Number(jumlah);
+        await supabase.from('produk').update({ stok: stokBaru }).eq('id', produkId);
+        
+        let id = 'LOG' + Date.now();
+        let tgl = new Date().toISOString();
+        await supabase.from('stok_log').insert([{
+          id, tgl, produk_id: produkId, produk_nama: produkNama,
+          tipe: 'keluar', jumlah: -Number(jumlah), stok_sistem: stokLama, stok_fisik: stokBaru, keterangan: keterangan || 'Rusak/Hilang'
+        }]);
+        return res.json("Sukses");
+      }
+      return res.status(400).json({ error: "Produk tidak ditemukan" });
+    }
+
+    if (func === 'submitOpname') {
+      const { items } = body; // array of { id, nama, stokSistem, stokFisik }
+      let promises = [];
+      let logs = [];
+      let tgl = new Date().toISOString();
+
+      for (let item of items) {
+        if (Number(item.stokSistem) !== Number(item.stokFisik)) {
+          let selisih = Number(item.stokFisik) - Number(item.stokSistem);
+          promises.push(supabase.from('produk').update({ stok: Number(item.stokFisik) }).eq('id', item.id));
+          logs.push({
+            id: 'LOG' + Date.now() + Math.floor(Math.random() * 1000),
+            tgl, produk_id: item.id, produk_nama: item.nama,
+            tipe: 'opname', jumlah: selisih, stok_sistem: Number(item.stokSistem), stok_fisik: Number(item.stokFisik),
+            keterangan: 'Adjustment Opname'
+          });
+        }
+      }
+
+      if (logs.length > 0) {
+        promises.push(supabase.from('stok_log').insert(logs));
+      }
+
+      await Promise.all(promises);
+      return res.json("Sukses");
+    }
+
+    // --- FUNGSI LAMA ---
     if (func === 'getRiwayatTransaksi') {
       const { startDate, endDate } = body;
       let now = new Date();
