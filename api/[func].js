@@ -80,13 +80,11 @@ module.exports = async (req, res) => {
     if (func === 'simpanTransaksi') {
       const { keranjang, pelanggan, diskonStr, metode, ttNama, ttImei, ttNilai, masaGaransi } = body;
       
-      // OPTIMASI: Ambil semua data produk sekaligus, bukan satu per satu
       const itemIds = keranjang.map(i => i.id);
       const { data: prods } = await supabase.from('produk').select('*').in('id', itemIds);
       const prodMap = {};
       (prods || []).forEach(p => prodMap[p.id] = p);
 
-      // Validasi Stok & IMEI
       for (let item of keranjang) {
         let prod = prodMap[item.id];
         if (!prod) return res.status(400).json({ error: 'Produk tidak ditemukan di database.' });
@@ -98,7 +96,6 @@ module.exports = async (req, res) => {
         }
       }
 
-      // Hitung Total
       let total = 0;
       let itemsArr = [];
       keranjang.forEach(item => {
@@ -123,9 +120,8 @@ module.exports = async (req, res) => {
         tt_nama: ttNama || null, tt_imei: ttImei || null, tt_nilai: nilaiTukar
       }]);
 
-      // OPTIMASI: Kumpulkan semua proses update stok & garansi, jalankan bersamaan (Promise.all)
       let updatePromises = [];
-      let mitraHutangMap = {}; // Untuk menjumlahkan hutang per mitra
+      let mitraHutangMap = {}; 
 
       for (let item of keranjang) {
         let prod = prodMap[item.id];
@@ -150,7 +146,6 @@ module.exports = async (req, res) => {
         }
       }
 
-      // Update Hutang Mitra Secara Bersamaan
       for (let mitraId in mitraHutangMap) {
         let tambahan = mitraHutangMap[mitraId];
         updatePromises.push(
@@ -160,7 +155,6 @@ module.exports = async (req, res) => {
         );
       }
 
-      // Eksekusi semua proses database secara paralel (INI MEMBUAT CHECKOUT JADI SANGAT CEPAT)
       await Promise.all(updatePromises);
 
       return res.json({ status: "Sukses", idTrx: idTrx, total: totalAkhir });
@@ -177,7 +171,6 @@ module.exports = async (req, res) => {
       return res.json(mapped);
     }
 
-    // --- FITUR KONSINYASI (MITRA) ---
     if (func === 'getMitra') {
       const { data } = await supabase.from('mitra').select('*').order('nama', { ascending: true });
       return res.json(data || []);
@@ -188,6 +181,15 @@ module.exports = async (req, res) => {
       if (!nama) return res.status(400).json({ error: "Nama mitra wajib diisi!" });
       let id = 'MTR' + Date.now();
       await supabase.from('mitra').insert([{ id: id, nama: nama, telp: telp || '', hutang: 0, piutang: 0 }]);
+      return res.json("Sukses");
+    }
+
+    if (func === 'deleteMitra') {
+      const { id } = body;
+      // Lepas status konsinyasi pada produk yang terhubung dengan mitra ini
+      await supabase.from('produk').update({ is_konsinyasi: false, mitra_id: null, harga_setoran: 0 }).eq('mitra_id', id);
+      // Hapus mitra
+      await supabase.from('mitra').delete().eq('id', id);
       return res.json("Sukses");
     }
 
@@ -203,7 +205,6 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: "Mitra tidak ditemukan" });
     }
 
-    // --- FITUR KONSINYASI KELUAR (PIUTANG) ---
     if (func === 'addKonsinyasiKeluar') {
       const { mitraId, mitraNama, items, total } = body;
       let tgl = new Date().toISOString();
@@ -211,8 +212,6 @@ module.exports = async (req, res) => {
       
       let updatePromises = [];
       for (let item of items) {
-        let prod = prodMap[item.id]; // Asumsi prodMap ada, sebaiknya fetch dulu
-        // Fetch prod
         const { data: p } = await supabase.from('produk').select('*').eq('id', item.id).single();
         if (p) {
           if (item.imei) {
@@ -265,7 +264,6 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: "Data tidak ditemukan" });
     }
 
-    // --- FUNGSI LAMA ---
     if (func === 'getRiwayatTransaksi') {
       const { startDate, endDate } = body;
       let now = new Date();
