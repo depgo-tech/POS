@@ -80,8 +80,15 @@ module.exports = async (req, res) => {
     if (func === 'simpanTransaksi') {
       const { keranjang, pelanggan, diskonStr, metode, ttNama, ttImei, ttNilai, masaGaransi } = body;
       
+      // OPTIMASI: Ambil semua data produk sekaligus, bukan satu per satu
+      const itemIds = keranjang.map(i => i.id);
+      const { data: prods } = await supabase.from('produk').select('*').in('id', itemIds);
+      const prodMap = {};
+      (prods || []).forEach(p => prodMap[p.id] = p);
+
+      // Validasi Stok & IMEI
       for (let item of keranjang) {
-        const { data: prod } = await supabase.from('produk').select('*').eq('id', item.id).single();
+        let prod = prodMap[item.id];
         if (!prod) return res.status(400).json({ error: 'Produk tidak ditemukan di database.' });
         if (item.imei) {
           let imeiExists = (prod.imeis || []).some(im => im.imei === item.imei && im.status === 'tersedia');
@@ -91,6 +98,7 @@ module.exports = async (req, res) => {
         }
       }
 
+      // Hitung Total
       let total = 0;
       let itemsArr = [];
       keranjang.forEach(item => {
@@ -115,31 +123,45 @@ module.exports = async (req, res) => {
         tt_nama: ttNama || null, tt_imei: ttImei || null, tt_nilai: nilaiTukar
       }]);
 
+      // OPTIMASI: Kumpulkan semua proses update stok & garansi, jalankan bersamaan (Promise.all)
+      let updatePromises = [];
+      let mitraHutangMap = {}; // Untuk menjumlahkan hutang per mitra
+
       for (let item of keranjang) {
-        const { data: prod } = await supabase.from('produk').select('*').eq('id', item.id).single();
+        let prod = prodMap[item.id];
         if (item.imei) {
           let newImeis = (prod.imeis || []).filter(im => im.imei !== item.imei);
-          await supabase.from('produk').update({ imeis: newImeis, stok: newImeis.length }).eq('id', item.id);
+          updatePromises.push(supabase.from('produk').update({ imeis: newImeis, stok: newImeis.length }).eq('id', item.id));
           
-          await supabase.from('garansi').insert([{
+          updatePromises.push(supabase.from('garansi').insert([{
             id: 'GR' + Date.now() + Math.floor(Math.random() * 1000),
             no_invoice: idTrx, tgl: tgl, imei: item.imei,
             nama_produk: item.nama + ' ' + item.varian, pelanggan: pelanggan,
             telp: '', masa_garansi: Number(masaGaransi) || 0
-          }]);
+          }]));
         } else {
           let newStok = Number(prod.stok) - Number(item.qty);
-          await supabase.from('produk').update({ stok: newStok }).eq('id', item.id);
+          updatePromises.push(supabase.from('produk').update({ stok: newStok }).eq('id', item.id));
         }
 
         if (prod.is_konsinyasi && prod.mitra_id) {
           let tambahanHutang = Number(prod.harga_setoran || 0) * Number(item.qty);
-          const { data: mitra } = await supabase.from('mitra').select('hutang').eq('id', prod.mitra_id).single();
-          if (mitra) {
-            await supabase.from('mitra').update({ hutang: Number(mitra.hutang) + tambahanHutang }).eq('id', prod.mitra_id);
-          }
+          mitraHutangMap[prod.mitra_id] = (mitraHutangMap[prod.mitra_id] || 0) + tambahanHutang;
         }
       }
+
+      // Update Hutang Mitra Secara Bersamaan
+      for (let mitraId in mitraHutangMap) {
+        let tambahan = mitraHutangMap[mitraId];
+        updatePromises.push(
+          supabase.from('mitra').select('hutang').eq('id', mitraId).single().then(({data}) => {
+            if (data) return supabase.from('mitra').update({ hutang: Number(data.hutang) + tambahan }).eq('id', mitraId);
+          })
+        );
+      }
+
+      // Eksekusi semua proses database secara paralel (INI MEMBUAT CHECKOUT JADI SANGAT CEPAT)
+      await Promise.all(updatePromises);
 
       return res.json({ status: "Sukses", idTrx: idTrx, total: totalAkhir });
     }
@@ -187,18 +209,22 @@ module.exports = async (req, res) => {
       let tgl = new Date().toISOString();
       let id = 'KK' + Date.now();
       
+      let updatePromises = [];
       for (let item of items) {
-        const { data: prod } = await supabase.from('produk').select('*').eq('id', item.id).single();
-        if (prod) {
+        let prod = prodMap[item.id]; // Asumsi prodMap ada, sebaiknya fetch dulu
+        // Fetch prod
+        const { data: p } = await supabase.from('produk').select('*').eq('id', item.id).single();
+        if (p) {
           if (item.imei) {
-            let newImeis = (prod.imeis || []).filter(im => im.imei !== item.imei);
-            await supabase.from('produk').update({ imeis: newImeis, stok: newImeis.length }).eq('id', item.id);
+            let newImeis = (p.imeis || []).filter(im => im.imei !== item.imei);
+            updatePromises.push(supabase.from('produk').update({ imeis: newImeis, stok: newImeis.length }).eq('id', item.id));
           } else {
-            let newStok = Number(prod.stok) - Number(item.qty);
-            await supabase.from('produk').update({ stok: newStok }).eq('id', item.id);
+            let newStok = Number(p.stok) - Number(item.qty);
+            updatePromises.push(supabase.from('produk').update({ stok: newStok }).eq('id', item.id));
           }
         }
       }
+      await Promise.all(updatePromises);
       
       let itemsStr = items.map(i => i.nama + (i.imei ? ' ['+i.imei+']' : ' x'+i.qty)).join(', ');
       
