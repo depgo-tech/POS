@@ -24,7 +24,7 @@
     .sidebar-header { padding: 20px; border-bottom: 1px solid #333; white-space: nowrap; display: flex; align-items: center; gap: 12px; }
     .sidebar-logo { width: 40px; height: 40px; object-fit: contain; border-radius: 8px; background: #fff; padding: 2px; }
     .sidebar-title-text { font-size: 18px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .menu-list { padding: 15px 0; flex: 1; }
+    .menu-list { padding: 15px 0; flex: 1; overflow-y: auto; }
     .menu-item { padding: 14px 20px; cursor: pointer; color: #ccc; font-size: 14px; font-weight: 500; transition: 0.2s; border-left: 4px solid transparent; white-space: nowrap; display: flex; align-items: center; gap: 12px; }
     .menu-item:hover { background: #222; color: #fff; }
     .menu-item.active { background: #1a1a1a; color: #fff; border-left: 4px solid #fff; }
@@ -52,7 +52,7 @@
     .data-table img { width: 45px; height: 45px; object-fit: contain; object-position: center; border-radius: var(--radius-sm); background: #f9f9f9; }
     .btn-action { padding: 6px 12px; border: 1px solid #ddd; background: #fff; cursor: pointer; font-size: 12px; margin-right: 5px; border-radius: var(--radius-sm); } .btn-action:hover { background: #f5f5f5; } .btn-action.danger { border-color: #dc3545; color: #dc3545; }
     .btn-add { background: #000; color: #fff; border: none; padding: 10px 20px; cursor: pointer; font-size: 14px; margin-bottom: 20px; border-radius: var(--radius-sm); font-weight: 500; }
-    .pos-wrapper { display: flex; height: calc(100dvh - 71px); gap: 20px; padding: 20px; }
+    .pos-wrapper { display: flex; height: calc(100dvh - 105px); gap: 20px; padding: 20px; }
     .product-area { flex: 1; background: #fff; border-radius: var(--radius-lg); padding: 20px; overflow-y: auto; border: 1px solid var(--border-color); }
     .pos-top-bar { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
     .search-box { flex: 1; min-width: 200px; padding: 10px 15px; border: 1px solid var(--border-color); border-radius: 20px; font-size: 14px; outline: none; } .search-box:focus { border-color: #000; }
@@ -103,6 +103,8 @@
     .tt-box { background: #fff0f0; border: 1px dashed #dc3545; padding: 10px; border-radius: 8px; margin-bottom: 10px; }
     .kons-box { background: #f0f8ff; border: 1px dashed #000; padding: 10px; border-radius: 8px; margin-top: 10px; }
     .card-box { background: #fff; padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 20px; }
+    .watermark { text-align: center; padding: 15px; font-size: 12px; color: #999; background: #fff; border-top: 1px solid var(--border-color); flex-shrink: 0; }
+    .watermark a { color: #000; font-weight: 600; text-decoration: none; }
     @media (max-width: 1024px) and (min-width: 901px) { .sidebar { width: 200px; } .product-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); } .cart-area { width: 300px; } .stats-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); } }
     @media (max-width: 900px) { body { overflow: auto; } .sidebar { position: fixed; z-index: 999; height: 100%; top: 0; left: 0; width: 260px; } .sidebar.collapsed { width: 0; } .sidebar-overlay.active { display: block; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 998; } .pos-wrapper { flex-direction: column; height: auto; padding: 10px; gap: 12px; } .product-area { height: auto; min-height: 55vh; } .cart-area { width: 100%; height: auto; max-height: 70vh; } .dash-grid { grid-template-columns: 1fr; } .stats-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; } .dashboard-header { flex-direction: column; align-items: stretch; } .dashboard-header > div:last-child { flex-direction: column; align-items: stretch; width: 100%; } .dashboard-header > div:last-child > div { width: 100%; } .date-picker { width: 100%; } .dashboard-header .btn-action { width: 100%; } .data-table { min-width: 640px; } .add-user-row input, .add-user-row select { min-width: 100% !important; flex: none !important; width: 100% !important; } .settings-card { padding: 20px; } .modal-content { padding: 20px; } .btn-action, .cat-btn, .btn-scan, .qty-btn { min-height: 38px; } .checkout-btn, .btn-save, .btn-close-modal, .btn-danger-modal { min-height: 46px; } }
     @media (max-width: 768px) { .topbar h3 { font-size: 16px; } .user-info { gap: 8px; } .btn-logout { padding: 8px 10px; font-size: 12px; } }
@@ -210,7 +212,7 @@
 
         <div id="view-produk" class="view" style="padding: 25px;">
           <div id="btnAddProdukContainer"></div>
-          <div class="table-scroll"><table class="data-table"><thead><tr><th>Foto</th><th>Nama Produk</th><th>Varian</th><th>Storage</th><th>Kategori</th><th>Harga</th><th>Stok</th><th>Aksi</th></tr></thead><tbody id="tableProduk"></tbody></table></div>
+          <div class="table-scroll"><table class="data-table"><thead><tr><th>Foto</th><th>Nama Produk</th><th>Varian</th><th>Storage</th><th>Kategori</th><th>Harga</th><th>Stok Saat Ini</th><th>Aksi</th></tr></thead><tbody id="tableProduk"></tbody></table></div>
         </div>
 
         <div id="view-stok" class="view" style="padding: 25px;">
@@ -314,12 +316,14 @@
           </div>
         </div>
       </div>
+      <div class="watermark">Design & Develop By <a href="https://depgo.tech" target="_blank">Depgo</a></div>
     </div>
   </div>
 
   <div class="modal-overlay" id="modalProduk">
     <div class="modal-content">
-      <h3 id="modalProdukTitle">Tambah Produk</h3>
+      <h3 id="modalProdukTitle">Tambah Produk (Katalog)</h3>
+      <p style="font-size:12px; color:#666; margin-bottom:15px; background:#f0f0f0; padding:8px; border-radius:4px;">Catatan: Stok dan IMEI tidak diisi di sini, melainkan di menu "Stok & Opname".</p>
       <input type="hidden" id="produkId">
       <div class="form-group" id="produkBarcodeGroup"><label>Barcode / Kode Produk (opsional)</label><div class="input-with-scan"><input type="text" id="produkBarcode" placeholder="Scan atau ketik manual, kosongkan untuk auto-generate"><button type="button" class="btn-scan" onclick="openScanner('produk')" title="Scan Barcode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg></button></div></div>
       <div class="form-group"><label>Nama Produk</label><input type="text" id="produkNama"></div>
@@ -327,8 +331,6 @@
       <div class="form-group"><label>Storage (Opsional)</label><input type="text" id="produkStorage" placeholder="cth: 128GB"></div>
       <div class="form-group"><label>Kategori</label><select id="produkKategori"><option value="Handphone">Handphone</option><option value="Tablet">Tablet</option><option value="Aksesoris">Aksesoris</option><option value="Lainnya">Lainnya</option></select></div>
       <div class="form-group"><label>Harga (Rp)</label><input type="number" id="produkHarga"></div>
-      <div class="form-group"><label>Stok (Hanya untuk Aksesoris/Tanpa IMEI)</label><input type="number" id="produkStok" value="0"></div>
-      <div class="form-group"><label>Daftar IMEI (1 baris = 1 IMEI)</label><textarea id="produkImeiText" rows="5" placeholder="Masukkan IMEI disini..." style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; font-family:monospace;"></textarea></div>
       
       <div class="kons-box">
         <div class="pay-row" style="margin-bottom: 5px;"><span>Produk Konsinyasi (Titip Jual)?</span><input type="checkbox" id="produkIsKonsinyasi" onchange="toggleKonsinyasiForm()"></div>
@@ -383,8 +385,9 @@
   <div class="modal-overlay" id="modalStok">
     <div class="modal-content" style="max-width: 400px;">
       <h3 id="modalStokTitle">Stok Masuk</h3>
-      <div class="form-group"><label>Pilih Produk</label><select id="stokProdukId"></select></div>
-      <div class="form-group"><label>Jumlah</label><input type="number" id="stokJumlah" value="1" min="1"></div>
+      <div class="form-group"><label>Pilih Produk</label><select id="stokProdukId" onchange="toggleStokImeiInput()"></select></div>
+      <div id="stokJumlahArea" class="form-group"><label>Jumlah</label><input type="number" id="stokJumlah" value="1" min="1"></div>
+      <div id="stokImeiArea" class="form-group hidden"><label>Daftar IMEI (1 baris = 1 IMEI)</label><textarea id="stokImeiText" rows="5" placeholder="Masukkan IMEI yang baru datang..." style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; font-family:monospace;"></textarea></div>
       <div class="form-group"><label>Keterangan</label><input type="text" id="stokKeterangan" placeholder="Contoh: Restock dari supplier / Barang rusak"></div>
       <button class="btn-save" id="btnSaveStok" onclick="submitStok()">Proses</button>
       <button class="btn-close-modal" onclick="closeModal('modalStok')">Batal</button>
@@ -765,14 +768,15 @@
     function openStokModal(type) {
       modalStokContext = type;
       let prodSelect = document.getElementById('stokProdukId');
-      // Filter produk tanpa IMEI (Aksesoris) karena IMEI harus input manual di master barang
-      let nonImeiProduk = allProduk.filter(p => !p[8] || p[8].length === 0);
-      prodSelect.innerHTML = nonImeiProduk.map(p => `<option value="${p[0]}">${esc(p[1])} ${esc(p[2])} (Stok: ${p[5]})</option>`).join('');
+      prodSelect.innerHTML = allProduk.map(p => `<option value="${p[0]}">${esc(p[1])} ${esc(p[2])} (Stok: ${p[5]})</option>`).join('');
       
-      document.getElementById('modalStokTitle').innerText = type === 'masuk' ? 'Stok Masuk' : 'Stok Keluar (Rusak/Hilang)';
+      document.getElementById('modalStokTitle').innerText = type === 'masuk' ? 'Stok Masuk (Restock)' : 'Stok Keluar (Rusak/Hilang)';
       document.getElementById('stokJumlah').value = 1;
+      document.getElementById('stokImeiText').value = '';
       document.getElementById('stokKeterangan').value = '';
       
+      toggleStokImeiInput(); // Cek apakah produk yg terpilih punya IMEI
+
       let btn = document.getElementById('btnSaveStok');
       btn.disabled = false;
       btn.innerText = 'Proses';
@@ -781,19 +785,42 @@
       document.getElementById('modalStok').style.display = 'flex';
     }
 
+    function toggleStokImeiInput() {
+      let prodId = document.getElementById('stokProdukId').value;
+      let p = allProduk.find(x => x[0] === prodId);
+      // Jika produk punya IMEI di master barang (tapi saat ini kosong karena dipisah), 
+      // kita anggap produk Handphone/Tablet memerlukan input IMEI.
+      // Untuk simplicity, kita cek kategori.
+      if (p && (p[6] === 'Handphone' || p[6] === 'Tablet')) {
+        document.getElementById('stokImeiArea').classList.remove('hidden');
+        document.getElementById('stokJumlahArea').classList.add('hidden');
+      } else {
+        document.getElementById('stokImeiArea').classList.add('hidden');
+        document.getElementById('stokJumlahArea').classList.remove('hidden');
+      }
+    }
+
     function submitStok() {
       let produkId = document.getElementById('stokProdukId').value;
-      let jumlah = parseInt(document.getElementById('stokJumlah').value) || 0;
-      let keterangan = document.getElementById('stokKeterangan').value.trim();
       let p = allProduk.find(x => x[0] === produkId);
-      if (!p || jumlah <= 0) { showToast('Data tidak valid!', true); return; }
+      if (!p) { showToast('Data tidak valid!', true); return; }
       
+      let payload = { produkId, produkNama: p[1] + ' ' + p[2], keterangan: document.getElementById('stokKeterangan').value.trim() };
+      
+      if (!document.getElementById('stokImeiArea').classList.contains('hidden')) {
+        payload.imeiText = document.getElementById('stokImeiText').value.trim();
+        if (!payload.imeiText) { showToast('IMEI wajib diisi!', true); return; }
+      } else {
+        payload.jumlah = parseInt(document.getElementById('stokJumlah').value) || 0;
+        if (payload.jumlah <= 0) { showToast('Jumlah tidak valid!', true); return; }
+      }
+
       let btn = document.getElementById('btnSaveStok');
       btn.disabled = true;
       btn.innerHTML = '<div class="spinner-white"></div> Memproses...';
 
       let apiFunc = modalStokContext === 'masuk' ? 'addStokMasuk' : 'addStokKeluar';
-      callApi(apiFunc, { produkId, produkNama: p[1] + ' ' + p[2], jumlah, keterangan }).then(function() {
+      callApi(apiFunc, payload).then(function() {
         showToast('Stok berhasil diupdate!');
         closeModal('modalStok');
         refreshProdukFromServer();
@@ -807,9 +834,8 @@
 
     function openOpnameModal() {
       let list = document.getElementById('opnameList');
-      let nonImeiProduk = allProduk.filter(p => !p[8] || p[8].length === 0);
       let html = '<table class="data-table" style="min-width:100%;"><thead><tr><th>Produk</th><th>Stok Sistem</th><th>Stok Fisik</th></tr></thead><tbody>';
-      nonImeiProduk.forEach(function(p) {
+      allProduk.forEach(function(p) {
         html += `<tr><td>${esc(p[1])} ${esc(p[2])}</td><td style="text-align:center;">${p[5]}</td><td style="text-align:center;"><input type="number" class="opname-input" data-id="${p[0]}" data-nama="${esc(p[1])}" data-sistem="${p[5]}" value="${p[5]}" style="width:70px; text-align:center; border:1px solid #ddd; border-radius:4px; padding:4px;"></td></tr>`;
       });
       html += '</tbody></table>';
@@ -1064,8 +1090,6 @@
       document.getElementById('produkVarian').value = '';
       document.getElementById('produkStorage').value = '';
       document.getElementById('produkHarga').value = '';
-      document.getElementById('produkStok').value = 0;
-      document.getElementById('produkImeiText').value = '';
       document.getElementById('produkFotoFile').value = '';
       document.getElementById('previewProdukFoto').style.display = 'none';
       document.getElementById('produkIsKonsinyasi').checked = false;
@@ -1089,11 +1113,7 @@
           document.getElementById('produkVarian').value = p[2];
           document.getElementById('produkStorage').value = p[3];
           document.getElementById('produkHarga').value = p[4];
-          document.getElementById('produkStok').value = p[5];
           document.getElementById('produkKategori').value = p[6];
-          if (p[8] && p[8].length > 0) {
-            document.getElementById('produkImeiText').value = p[8].map(im => im.imei).join('\n');
-          }
           if (p[7]) { document.getElementById('previewProdukFoto').src = p[7]; document.getElementById('previewProdukFoto').style.display = 'block'; }
           if (p[9]) {
             document.getElementById('produkIsKonsinyasi').checked = true;
@@ -1116,7 +1136,6 @@
     function saveProduk() {
       let btn = document.getElementById('btnSaveProduk');
       let barcodeInput = document.getElementById('produkBarcode').value.trim();
-      let imeiText = document.getElementById('produkImeiText').value.trim();
       let data = {
         id: document.getElementById('produkId').value || barcodeInput,
         nama: document.getElementById('produkNama').value.trim(),
@@ -1124,8 +1143,6 @@
         storage: document.getElementById('produkStorage').value.trim(),
         kategori: document.getElementById('produkKategori').value,
         harga: document.getElementById('produkHarga').value,
-        stok: document.getElementById('produkStok').value,
-        imeiText: imeiText,
         foto: getBase64Image('previewProdukFoto'),
         isKonsinyasi: document.getElementById('produkIsKonsinyasi').checked,
         mitraId: document.getElementById('produkMitraId').value,
