@@ -711,6 +711,7 @@
         let tbody = document.getElementById('tableMitra');
         let rows = allMitra.map(function(m) {
           let actions = '<button class="btn-action" onclick="openModalFinansial(\'bayar_hutang\', \'' + esc(m.id) + '\', \'' + esc(m.nama) + '\', ' + m.hutang + ')">Bayar Hutang</button>';
+          actions += '<button class="btn-action danger" onclick="confirmDelete(\'' + esc(m.id) + '\', \'mitra\')">Hapus</button>';
           return '<tr><td style="font-weight:500;">' + esc(m.nama) + '</td><td>' + esc(m.telp) + '</td><td style="color:' + (m.hutang > 0 ? 'red' : 'green') + '; font-weight:600;">Rp ' + Number(m.hutang).toLocaleString('id-ID') + '</td><td style="color:' + (m.piutang > 0 ? 'blue' : 'green') + '; font-weight:600;">Rp ' + Number(m.piutang).toLocaleString('id-ID') + '</td><td>' + actions + '</td></tr>';
         });
         tbody.innerHTML = rows.join('');
@@ -1342,6 +1343,12 @@
         callApi('deleteProduk', { id: targetDeleteId }).then(function() { showToast('Produk dihapus!'); refreshProdukFromServer(); loadTableProduk(); }).catch(function(err) { showToast('Gagal menghapus produk: ' + (err && err.message ? err.message : ''), true); });
       } else if (targetDeleteType === 'user') {
         callApi('deleteUser', { id: targetDeleteId }).then(function() { showToast('User dihapus!'); loadUsers(); }).catch(function(err) { showToast('Gagal menghapus user: ' + (err && err.message ? err.message : ''), true); });
+      } else if (targetDeleteType === 'mitra') {
+        callApi('deleteMitra', { id: targetDeleteId }).then(function() { 
+          showToast('Mitra dihapus! Status konsinyasi pada produk terkait telah dilepas.'); 
+          loadKonsinyasi(); 
+          refreshProdukFromServer(); 
+        }).catch(function(err) { showToast('Gagal menghapus mitra: ' + (err && err.message ? err.message : ''), true); });
       }
       targetDeleteId = null; targetDeleteType = '';
     }
