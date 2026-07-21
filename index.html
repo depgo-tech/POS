@@ -239,15 +239,25 @@
         </div>
 
         <div id="view-konsinyasi" class="view" style="padding: 25px;">
-          <div class="dashboard-header"><div><h2>Konsinyasi (Titip Jual)</h2><p>Catatan hutang kepada mitra/supplier.</p></div></div>
+          <div class="dashboard-header">
+            <div><h2>Konsinyasi (Titip Jual)</h2><p>Kelola hutang & piutang dengan mitra/supplier.</p></div>
+            <button class="btn-add" style="margin:0;" onclick="openKonsinyasiKeluarModal()">+ Kirim Barang (Titip Keluar)</button>
+          </div>
+          
           <div class="card-box">
-            <div class="add-user-row" style="display:flex; gap:10px; flex-wrap:wrap;">
+            <h3 style="margin-bottom: 15px; font-size: 16px;">Daftar Mitra</h3>
+            <div class="add-user-row" style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
               <input type="text" id="newMitraNama" class="search-box" placeholder="Nama Mitra / Supplier" style="flex:1; min-width:150px;">
               <input type="text" id="newMitraTelp" class="search-box" placeholder="No. WhatsApp" style="flex:1; min-width:120px;">
               <button class="btn-add" style="margin:0;" onclick="addMitra()">+ Tambah Mitra</button>
             </div>
+            <div class="table-scroll"><table class="data-table"><thead><tr><th>Nama Mitra</th><th>No. Telp</th><th>Hutang (Titip Masuk)</th><th>Piutang (Titip Keluar)</th><th>Aksi</th></tr></thead><tbody id="tableMitra"></tbody></table></div>
           </div>
-          <div class="table-scroll"><table class="data-table"><thead><tr><th>Nama Mitra</th><th>No. Telp</th><th>Total Hutang</th><th>Aksi</th></tr></thead><tbody id="tableMitra"></tbody></table></div>
+
+          <div class="card-box" style="margin-top:20px;">
+            <h3 style="margin-bottom: 15px; font-size: 16px;">Riwayat Titip Keluar (Piutang)</h3>
+            <div class="table-scroll"><table class="data-table"><thead><tr><th>Tgl</th><th>Mitra</th><th>Items Dikirim</th><th>Total Setoran</th><th>Status</th></tr></thead><tbody id="tableKonsinyasiKeluar"></tbody></table></div>
+          </div>
         </div>
 
         <div id="view-users" class="view" style="padding: 25px;">
@@ -304,6 +314,42 @@
       <div class="form-group" style="margin-top:15px;"><label>Foto Produk</label><input type="file" id="produkFotoFile" accept="image/*" onchange="previewImage(this, 'previewProdukFoto')"><img id="previewProdukFoto" class="preview-img" style="display:none;"></div>
       <button class="btn-save" id="btnSaveProduk" onclick="saveProduk()">Simpan Produk</button>
       <button class="btn-close-modal" onclick="closeModal('modalProduk')">Batal</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalKonsinyasiKeluar">
+    <div class="modal-content" style="max-width: 500px;">
+      <h3>Kirim Barang Konsinyasi (Titip Keluar)</h3>
+      <div class="form-group"><label>Pilih Mitra</label><select id="kkMitraId"></select></div>
+      
+      <div class="form-group" style="border:1px solid #eee; padding:10px; border-radius:8px;">
+        <label>Pilih Produk</label>
+        <select id="kkProdukId" onchange="updateKonsinyasiImeiOptions()"></select>
+        <div id="kkImeiArea" class="hidden" style="margin-top:10px;">
+          <label>Pilih IMEI</label>
+          <select id="kkImei"></select>
+        </div>
+        <div id="kkQtyArea" style="margin-top:10px;">
+          <label>Jumlah</label>
+          <input type="number" id="kkQty" value="1" min="1">
+        </div>
+        <label style="margin-top:10px;">Harga Setoran (per item)</label>
+        <input type="number" id="kkHargaSetoran" placeholder="Berapa yang dibayar mitra ke kita">
+        <button class="btn-action" style="margin-top:10px; width:100%;" onclick="tambahKeranjangKonsinyasi()">Tambah ke Daftar Kirim</button>
+      </div>
+
+      <h4 style="margin-top:15px; margin-bottom:10px;">Daftar Barang Dikirim:</h4>
+      <div id="kkKeranjangList" style="max-height:150px; overflow-y:auto; border:1px solid #eee; padding:10px; border-radius:8px; margin-bottom:15px;">
+        <p style="text-align:center; color:#999;">Belum ada barang</p>
+      </div>
+
+      <div class="pay-row" style="font-weight:bold; font-size:16px; margin-bottom:15px;">
+        <span>Total Setoran (Piutang):</span>
+        <span id="kkTotalSetoran">Rp 0</span>
+      </div>
+
+      <button class="btn-save" onclick="simpanKonsinyasiKeluar()">Kirim & Catat Piutang</button>
+      <button class="btn-close-modal" onclick="closeModal('modalKonsinyasiKeluar')">Batal</button>
     </div>
   </div>
   
@@ -373,7 +419,8 @@
 
     let currentUser = null; let allProduk = []; let keranjang = []; let kategoriList = ['Semua']; let salesChart = null; let currentSettings = []; let targetDeleteId = null; let targetDeleteType = ''; let activeCategory = 'Semua'; let isCheckingOut = false; 
     let allGaransiData = []; 
-    let allMitra = []; // Variabel untuk data mitra konsinyasi
+    let allMitra = [];
+    let keranjangKonsinyasi = []; // Keranjang untuk titip keluar
 
     var MENU = [
       { page:'dashboard', label:'Dashboard', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>', adminOnly:true },
@@ -514,7 +561,7 @@
     }
 
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') { closeModal('modalProduk'); closeModal('modalStruk'); closeModal('modalVariant'); closeModal('modalImei'); closeModal('modalConfirm'); closeScanner(); }
+      if (e.key === 'Escape') { closeModal('modalProduk'); closeModal('modalStruk'); closeModal('modalVariant'); closeModal('modalImei'); closeModal('modalConfirm'); closeModal('modalKonsinyasiKeluar'); closeScanner(); }
       if (e.key === 'Enter') {
         let active = document.activeElement;
         if (active.tagName !== 'INPUT' && active.tagName !== 'SELECT' && active.tagName !== 'TEXTAREA') { if (document.getElementById('btnCheckout') && !document.getElementById('btnCheckout').disabled) { processCheckout(); } }
@@ -611,14 +658,25 @@
 
     function loadKonsinyasi() {
       callApi('getMitra', {}).then(function(data) {
-        allMitra = data || []; // Update global variabel
+        allMitra = data || []; 
         let tbody = document.getElementById('tableMitra');
         let rows = allMitra.map(function(m) {
-          let actions = '<button class="btn-action" onclick="promptBayarHutang(\'' + esc(m.id) + '\', \'' + esc(m.nama) + '\', ' + m.hutang + ')">Bayar/Setor</button>';
-          return '<tr><td style="font-weight:500;">' + esc(m.nama) + '</td><td>' + esc(m.telp) + '</td><td style="color:' + (m.hutang > 0 ? 'red' : 'green') + '; font-weight:600;">Rp ' + Number(m.hutang).toLocaleString('id-ID') + '</td><td>' + actions + '</td></tr>';
+          let actions = '<button class="btn-action" onclick="promptBayarHutang(\'' + esc(m.id) + '\', \'' + esc(m.nama) + '\', ' + m.hutang + ')">Bayar Hutang</button>';
+          actions += '<button class="btn-action" onclick="promptTerimaPiutang(\'' + esc(m.id) + '\', \'' + esc(m.nama) + '\', ' + m.piutang + ')">Terima Piutang</button>';
+          return '<tr><td style="font-weight:500;">' + esc(m.nama) + '</td><td>' + esc(m.telp) + '</td><td style="color:' + (m.hutang > 0 ? 'red' : 'green') + '; font-weight:600;">Rp ' + Number(m.hutang).toLocaleString('id-ID') + '</td><td style="color:' + (m.piutang > 0 ? 'blue' : 'green') + '; font-weight:600;">Rp ' + Number(m.piutang).toLocaleString('id-ID') + '</td><td>' + actions + '</td></tr>';
         });
         tbody.innerHTML = rows.join('');
       }).catch(function(err) { showToast('Gagal memuat mitra: ' + (err && err.message ? err.message : ''), true); });
+
+      callApi('getKonsinyasiKeluar', {}).then(function(data) {
+        let tbody = document.getElementById('tableKonsinyasiKeluar');
+        if (!data || data.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#999; padding:20px;">Belum ada barang dititipkan keluar</td></tr>'; return; }
+        let rows = data.map(function(k) {
+          let dateStr = new Date(k.tgl).toLocaleDateString('id-ID');
+          return '<tr><td>' + esc(dateStr) + '</td><td>' + esc(k.mitra_nama) + '</td><td style="font-size:12px;">' + esc(k.items) + '</td><td font-weight:600;">Rp ' + Number(k.total).toLocaleString('id-ID') + '</td><td>' + esc(k.status) + '</td></tr>';
+        });
+        tbody.innerHTML = rows.join('');
+      }).catch(function(){});
     }
 
     function addMitra() {
@@ -631,12 +689,106 @@
     }
 
     function promptBayarHutang(id, nama, hutang) {
-      let jmlStr = prompt('Masukkan jumlah uang yang disetor ke ' + nama + ':\n(Saat ini hutang: Rp ' + Number(hutang).toLocaleString('id-ID') + ')');
+      let jmlStr = prompt('Masukkan jumlah uang yang disetor ke ' + nama + ' (Titip Masuk):\n(Saat ini hutang: Rp ' + Number(hutang).toLocaleString('id-ID') + ')');
       if (jmlStr === null) return;
       let jumlah = parseFloat(jmlStr) || 0;
       if (jumlah <= 0) { showToast('Jumlah tidak valid!', true); return; }
       callApi('bayarHutangMitra', { id: id, jumlah: jumlah }).then(function() {
         showToast('Pembayaran hutang ke ' + nama + ' berhasil dicatat!');
+        loadKonsinyasi();
+      }).catch(function(err) { showToast('Gagal: ' + (err && err.message ? err.message : ''), true); });
+    }
+
+    function promptTerimaPiutang(id, nama, piutang) {
+      let jmlStr = prompt('Masukkan jumlah uang yang diterima dari ' + nama + ' (Titip Keluar):\n(Saat ini piutang: Rp ' + Number(piutang).toLocaleString('id-ID') + ')');
+      if (jmlStr === null) return;
+      let jumlah = parseFloat(jmlStr) || 0;
+      if (jumlah <= 0) { showToast('Jumlah tidak valid!', true); return; }
+      callApi('terimaPiutangMitra', { id: id, jumlah: jumlah }).then(function() {
+        showToast('Penerimaan piutang dari ' + nama + ' berhasil dicatat!');
+        loadKonsinyasi();
+      }).catch(function(err) { showToast('Gagal: ' + (err && err.message ? err.message : ''), true); });
+    }
+
+    function openKonsinyasiKeluarModal() {
+      keranjangKonsinyasi = [];
+      document.getElementById('kkMitraId').innerHTML = allMitra.map(m => `<option value="${m.id}">${esc(m.nama)}</option>`).join('');
+      document.getElementById('kkProdukId').innerHTML = allProduk.map(p => `<option value="${p[0]}">${esc(p[1])} ${esc(p[2])}</option>`).join('');
+      document.getElementById('kkQty').value = 1;
+      document.getElementById('kkHargaSetoran').value = '';
+      updateKonsinyasiImeiOptions();
+      renderKeranjangKonsinyasi();
+      document.getElementById('modalKonsinyasiKeluar').style.display = 'flex';
+    }
+
+    function updateKonsinyasiImeiOptions() {
+      let prodId = document.getElementById('kkProdukId').value;
+      let p = allProduk.find(x => x[0] === prodId);
+      if (p && p[8] && p[8].length > 0) {
+        document.getElementById('kkImeiArea').classList.remove('hidden');
+        document.getElementById('kkQtyArea').classList.add('hidden');
+        let imeis = p[8].filter(im => im.status === 'tersedia');
+        document.getElementById('kkImei').innerHTML = imeis.map(im => `<option value="${im.imei}">${im.imei}</option>`).join('');
+      } else {
+        document.getElementById('kkImeiArea').classList.add('hidden');
+        document.getElementById('kkQtyArea').classList.remove('hidden');
+      }
+    }
+
+    function tambahKeranjangKonsinyasi() {
+      let prodId = document.getElementById('kkProdukId').value;
+      let p = allProduk.find(x => x[0] === prodId);
+      if (!p) return;
+      let hargaSetoran = parseFloat(document.getElementById('kkHargaSetoran').value) || 0;
+      if (hargaSetoran <= 0) { showToast('Harga setoran wajib diisi!', true); return; }
+
+      let item = { id: p[0], nama: p[1], varian: p[2], hargaSetoran: hargaSetoran, imei: null, qty: 0 };
+      if (!document.getElementById('kkImeiArea').classList.contains('hidden')) {
+        item.imei = document.getElementById('kkImei').value;
+        item.qty = 1;
+        if (keranjangKonsinyasi.some(x => x.imei === item.imei)) { showToast('IMEI sudah ada di daftar!', true); return; }
+      } else {
+        item.qty = parseInt(document.getElementById('kkQty').value) || 1;
+        let existing = keranjangKonsinyasi.find(x => x.id === item.id && !x.imei);
+        if (existing) { existing.qty += item.qty; } 
+        else { keranjangKonsinyasi.push(item); }
+        renderKeranjangKonsinyasi();
+        return;
+      }
+      keranjangKonsinyasi.push(item);
+      renderKeranjangKonsinyasi();
+    }
+
+    function renderKeranjangKonsinyasi() {
+      let c = document.getElementById('kkKeranjangList');
+      if (keranjangKonsinyasi.length === 0) { c.innerHTML = '<p style="text-align:center; color:#999;">Belum ada barang</p>'; document.getElementById('kkTotalSetoran').innerText = 'Rp 0'; return; }
+      let html = '';
+      let total = 0;
+      keranjangKonsinyasi.forEach((item, idx) => {
+        let sub = item.hargaSetoran * item.qty;
+        total += sub;
+        let txt = item.nama + ' ' + item.varian + (item.imei ? ' ['+item.imei+']' : ' x'+item.qty);
+        html += '<div style="display:flex; justify-content:space-between; margin-bottom:5px; font-size:13px;"><span>' + esc(txt) + '</span><span>Rp ' + sub.toLocaleString('id-ID') + ' <span style="color:red; cursor:pointer; font-weight:bold; margin-left:5px;" onclick="hapusKeranjangKonsinyasi('+idx+')">X</span></span></div>';
+      });
+      c.innerHTML = html;
+      document.getElementById('kkTotalSetoran').innerText = 'Rp ' + total.toLocaleString('id-ID');
+    }
+
+    function hapusKeranjangKonsinyasi(idx) {
+      keranjangKonsinyasi.splice(idx, 1);
+      renderKeranjangKonsinyasi();
+    }
+
+    function simpanKonsinyasiKeluar() {
+      if (keranjangKonsinyasi.length === 0) { showToast('Daftar barang masih kosong!', true); return; }
+      let mitraId = document.getElementById('kkMitraId').value;
+      let mitraNama = allMitra.find(m => m.id === mitraId).nama;
+      let total = keranjangKonsinyasi.reduce((s, i) => s + (i.hargaSetoran * i.qty), 0);
+
+      callApi('addKonsinyasiKeluar', { mitraId: mitraId, mitraNama: mitraNama, items: keranjangKonsinyasi, total: total }).then(function() {
+        showToast('Barang berhasil dikirim dan piutang dicatat!');
+        closeModal('modalKonsinyasiKeluar');
+        refreshProdukFromServer();
         loadKonsinyasi();
       }).catch(function(err) { showToast('Gagal: ' + (err && err.message ? err.message : ''), true); });
     }
@@ -701,7 +853,6 @@
       toggleKonsinyasiForm();
       document.getElementById('produkHargaSetoran').value = '';
 
-      // FIX: Selalu muat ulang daftar mitra dari memori (allMitra) setiap kali form dibuka
       let select = document.getElementById('produkMitraId');
       select.innerHTML = '<option value="">Pilih Mitra...</option>';
       allMitra.forEach(function(m) {
@@ -1036,7 +1187,7 @@
         document.getElementById('diskonInput').value = 0;
         toggleTukarTambah(); 
         document.getElementById('useTukarTambah').checked = false;
-        document.getElementById('masaGaransi').value = '0'; // Reset garansi
+        document.getElementById('masaGaransi').value = '0';
         isCheckingOut = false;
         btn.innerHTML = 'Bayar [Enter]';
         renderProduk(); renderKeranjang();
