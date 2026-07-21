@@ -98,6 +98,7 @@
     .date-picker { padding: 10px 15px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 14px; outline: none; } .date-picker:focus { border-color: #000; } .sidebar-overlay { display: none; }
     .table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; } .table-scroll .data-table, .table-scroll table { min-width: 640px; }
     .tt-box { background: #fff0f0; border: 1px dashed #dc3545; padding: 10px; border-radius: 8px; margin-bottom: 10px; }
+    .kons-box { background: #f0f8ff; border: 1px dashed #000; padding: 10px; border-radius: 8px; margin-top: 10px; }
     @media (max-width: 1024px) and (min-width: 901px) { .sidebar { width: 200px; } .product-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); } .cart-area { width: 300px; } .stats-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); } }
     @media (max-width: 900px) { body { overflow: auto; } .sidebar { position: fixed; z-index: 999; height: 100%; top: 0; left: 0; width: 260px; } .sidebar.collapsed { width: 0; } .sidebar-overlay.active { display: block; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 998; } .pos-wrapper { flex-direction: column; height: auto; padding: 10px; gap: 12px; } .product-area { height: auto; min-height: 55vh; } .cart-area { width: 100%; height: auto; max-height: 70vh; } .dash-grid { grid-template-columns: 1fr; } .stats-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; } .dashboard-header { flex-direction: column; align-items: stretch; } .dashboard-header > div:last-child { flex-direction: column; align-items: stretch; width: 100%; } .dashboard-header > div:last-child > div { width: 100%; } .date-picker { width: 100%; } .dashboard-header .btn-action { width: 100%; } .data-table { min-width: 640px; } .add-user-row input, .add-user-row select { min-width: 100% !important; flex: none !important; width: 100% !important; } .settings-card { padding: 20px; } .modal-content { padding: 20px; } .btn-action, .cat-btn, .btn-scan, .qty-btn { min-height: 38px; } .checkout-btn, .btn-save, .btn-close-modal, .btn-danger-modal { min-height: 46px; } }
     @media (max-width: 768px) { .topbar h3 { font-size: 16px; } .user-info { gap: 8px; } .btn-logout { padding: 8px 10px; font-size: 12px; } }
@@ -185,6 +186,7 @@
                   <input type="number" id="ttNilai" placeholder="Nilai Tukar (Rp)" oninput="hitungTotal()" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;">
                 </div>
 
+                <div class="pay-row"><span>Pilih Garansi</span><select id="masaGaransi"><option value="0">Tidak Bergaransi</option><option value="1">1 Bulan (Toko)</option><option value="3">3 Bulan (Toko)</option><option value="6">6 Bulan (Toko)</option><option value="12">12 Bulan (Distributor)</option><option value="24">24 Bulan (Ibox)</option></select></div>
                 <div class="pay-row"><span>Metode Bayar</span><select id="metodeBayar"><option value="Cash">Cash</option><option value="QRIS">QRIS</option><option value="Debit">Debit</option><option value="E-Wallet">E-Wallet</option></select></div>
                 <div class="grand-total"><span>Total</span><span id="totalBayar">Rp 0</span></div>
                 <input type="text" id="namaPelanggan" class="input-cust" placeholder="Nama customer (opsional)" tabindex="2">
@@ -229,9 +231,22 @@
           </div>
           <div class="data-table table-scroll">
             <table style="width: 100%; border-collapse: collapse; min-width: 640px;">
-              <thead><tr><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Invoice</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Tgl Beli</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Pelanggan</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Produk</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">IMEI</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Garansi Sampai</th></tr></thead>
-              <tbody id="garansiTable" style="vertical-align: top;"><tr><td colspan="6" style="text-align:center; color:#999; padding:20px;">Memuat garansi...</td></tr></tbody>
+              <thead><tr><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Invoice</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Tgl Beli</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Pelanggan</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Produk</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">IMEI</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Garansi</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Sampai</th></tr></thead>
+              <tbody id="garansiTable" style="vertical-align: top;"><tr><td colspan="7" style="text-align:center; color:#999; padding:20px;">Memuat garansi...</td></tr></tbody>
             </table>
+          </div>
+        </div>
+
+        <div id="view-konsinyasi" class="view" style="padding: 25px;">
+          <div class="dashboard-header"><div><h2>Konsinyasi (Titip Jual)</h2><p>Catatan hutang kepada mitra/supplier.</p></div></div>
+          <div class="settings-card">
+            <h3 style="margin-bottom: 15px; font-size: 16px;">Tambah Mitra Baru</h3>
+            <div class="add-user-row" style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
+              <input type="text" id="newMitraNama" class="search-box" placeholder="Nama Mitra / Supplier" style="flex:1; min-width:150px;">
+              <input type="text" id="newMitraTelp" class="search-box" placeholder="No. WhatsApp" style="flex:1; min-width:120px;">
+              <button class="btn-add" style="margin:0;" onclick="addMitra()">+ Tambah</button>
+            </div>
+            <div class="table-scroll"><table class="data-table"><thead><tr><th>Nama Mitra</th><th>No. Telp</th><th>Total Hutang</th><th>Aksi</th></tr></thead><tbody id="tableMitra"></tbody></table></div>
           </div>
         </div>
 
@@ -278,7 +293,16 @@
       <div class="form-group"><label>Harga (Rp)</label><input type="number" id="produkHarga"></div>
       <div class="form-group"><label>Stok (Hanya untuk Aksesoris/Tanpa IMEI)</label><input type="number" id="produkStok" value="0"></div>
       <div class="form-group"><label>Daftar IMEI (1 baris = 1 IMEI)</label><textarea id="produkImeiText" rows="5" placeholder="Masukkan IMEI disini..." style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; font-family:monospace;"></textarea></div>
-      <div class="form-group"><label>Foto Produk</label><input type="file" id="produkFotoFile" accept="image/*" onchange="previewImage(this, 'previewProdukFoto')"><img id="previewProdukFoto" class="preview-img" style="display:none;"></div>
+      
+      <div class="kons-box">
+        <div class="pay-row" style="margin-bottom: 5px;"><span>Produk Konsinyasi (Titip Jual)?</span><input type="checkbox" id="produkIsKonsinyasi" onchange="toggleKonsinyasiForm()"></div>
+        <div id="konsinyasiForm" class="hidden">
+          <div class="form-group" style="margin-top:10px;"><label>Pilih Mitra</label><select id="produkMitraId"></select></div>
+          <div class="form-group"><label>Harga Setoran ke Mitra (Rp)</label><input type="number" id="produkHargaSetoran" placeholder="Uang yang dibayar ke mitra jika terjual"></div>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:15px;"><label>Foto Produk</label><input type="file" id="produkFotoFile" accept="image/*" onchange="previewImage(this, 'previewProdukFoto')"><img id="previewProdukFoto" class="preview-img" style="display:none;"></div>
       <button class="btn-save" id="btnSaveProduk" onclick="saveProduk()">Simpan Produk</button>
       <button class="btn-close-modal" onclick="closeModal('modalProduk')">Batal</button>
     </div>
@@ -349,7 +373,8 @@
     }
 
     let currentUser = null; let allProduk = []; let keranjang = []; let kategoriList = ['Semua']; let salesChart = null; let currentSettings = []; let targetDeleteId = null; let targetDeleteType = ''; let activeCategory = 'Semua'; let isCheckingOut = false; 
-    let allGaransiData = []; // Variabel global untuk menyimpan data garansi
+    let allGaransiData = []; 
+    let allMitra = []; // Variabel untuk data mitra konsinyasi
 
     var MENU = [
       { page:'dashboard', label:'Dashboard', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>', adminOnly:true },
@@ -357,6 +382,7 @@
       { page:'produk', label:'Master Barang', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>' },
       { page:'riwayat', label:'Riwayat Trx', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>' },
       { page:'garansi', label:'Garansi', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>' },
+      { page:'konsinyasi', label:'Konsinyasi', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>', adminOnly:true },
       { page:'users', label:'Manajemen User', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>', adminOnly:true },
       { page:'pengaturan', label:'Pengaturan', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>', adminOnly:true }
     ];
@@ -426,6 +452,16 @@
         }
         document.getElementById('sidebarTitle').innerText = (d && d[0]) || 'Toko Saya';
       }).catch(function(){});
+      
+      // Load Mitra for dropdown in Product Form
+      if (currentUser.role === 'admin') {
+        callApi('getMitra', {}).then(function(data) {
+          allMitra = data || [];
+          let select = document.getElementById('produkMitraId');
+          select.innerHTML = '<option value="">Pilih Mitra...</option>' + allMitra.map(m => `<option value="${m.id}">${esc(m.nama)}</option>`).join('');
+        });
+      }
+
       refreshProdukFromServer(function() {
         if (currentUser.role === 'admin') navigate('dashboard', document.querySelector('.menu-item'));
         else navigate('pos', document.querySelector('.menu-item'));
@@ -467,6 +503,7 @@
       if (page === 'pos') renderProduk();
       if (page === 'produk') loadTableProduk();
       if (page === 'garansi') loadGaransi();
+      if (page === 'konsinyasi') loadKonsinyasi();
       if (page === 'riwayat') {
         let todayStr = new Date().toISOString().split('T')[0];
         if (!document.getElementById('riwayatDateStart').value) document.getElementById('riwayatDateStart').value = todayStr;
@@ -546,13 +583,13 @@
 
     function loadGaransi() {
       let t = document.getElementById('garansiTable');
-      t.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999; padding:20px;">Memuat data garansi...</td></tr>';
+      t.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999; padding:20px;">Memuat data garansi...</td></tr>';
       callApi('getGaransi', {}).then(function (d) {
         allGaransiData = d || [];
         renderGaransiTable();
       }).catch(function(err) { 
         allGaransiData = [];
-        t.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red; padding:20px;">Error: ' + esc(err.message) + '</td></tr>'; 
+        t.innerHTML = '<tr><td colspan="7" style="text-align:center; color:red; padding:20px;">Error: ' + esc(err.message) + '</td></tr>'; 
       });
     }
 
@@ -568,7 +605,7 @@
       });
 
       if (filtered.length === 0) { 
-        t.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999; padding:20px;">Data tidak ditemukan</td></tr>'; 
+        t.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999; padding:20px;">Data tidak ditemukan</td></tr>'; 
         return; 
       }
       let html = '';
@@ -576,9 +613,42 @@
         let dateStr = new Date(r.tgl).toLocaleDateString('id-ID');
         let expStr = new Date(r.exp).toLocaleDateString('id-ID');
         let isExp = new Date(r.exp) < new Date();
-        html += '<tr style="border-bottom:1px solid #f5f5f5;"><td style="padding:12px; font-weight:500;">' + esc(r.invoice) + '</td><td style="padding:12px; color:var(--text-gray);">' + esc(dateStr) + '</td><td style="padding:12px;">' + esc(r.pelanggan) + '</td><td style="padding:12px; font-size:12px;">' + esc(r.produk) + '</td><td style="padding:12px; font-size:12px;">' + esc(r.imei) + '</td><td style="padding:12px; color:' + (isExp ? 'red' : 'green') + '; font-weight:600;">' + esc(expStr) + '</td></tr>';
+        let masaTxt = r.masaGaransi > 0 ? r.masaGaransi + ' Bulan' : 'Tidak Bergaransi';
+        html += '<tr style="border-bottom:1px solid #f5f5f5;"><td style="padding:12px; font-weight:500;">' + esc(r.invoice) + '</td><td style="padding:12px; color:var(--text-gray);">' + esc(dateStr) + '</td><td style="padding:12px;">' + esc(r.pelanggan) + '</td><td style="padding:12px; font-size:12px;">' + esc(r.produk) + '</td><td style="padding:12px; font-size:12px;">' + esc(r.imei) + '</td><td style="padding:12px;">' + esc(masaTxt) + '</td><td style="padding:12px; color:' + (isExp ? 'red' : 'green') + '; font-weight:600;">' + esc(expStr) + '</td></tr>';
       });
       t.innerHTML = html;
+    }
+
+    function loadKonsinyasi() {
+      callApi('getMitra', {}).then(function(data) {
+        allMitra = data || [];
+        let tbody = document.getElementById('tableMitra');
+        let rows = allMitra.map(function(m) {
+          let actions = '<button class="btn-action" onclick="promptBayarHutang(\'' + esc(m.id) + '\', \'' + esc(m.nama) + '\', ' + m.hutang + ')">Bayar/Setor</button>';
+          return '<tr><td style="font-weight:500;">' + esc(m.nama) + '</td><td>' + esc(m.telp) + '</td><td style="color:' + (m.hutang > 0 ? 'red' : 'green') + '; font-weight:600;">Rp ' + Number(m.hutang).toLocaleString('id-ID') + '</td><td>' + actions + '</td></tr>';
+        });
+        tbody.innerHTML = rows.join('');
+      }).catch(function(err) { showToast('Gagal memuat mitra: ' + (err && err.message ? err.message : ''), true); });
+    }
+
+    function addMitra() {
+      let n = document.getElementById('newMitraNama').value.trim();
+      let t = document.getElementById('newMitraTelp').value.trim();
+      if(!n) { showToast('Nama mitra wajib diisi', true); return; }
+      callApi('addMitra', { nama: n, telp: t }).then(function(res) {
+        if(res === "Sukses") { showToast('Mitra berhasil ditambahkan!'); document.getElementById('newMitraNama').value = ''; document.getElementById('newMitraTelp').value = ''; loadKonsinyasi(); }
+      }).catch(function(err) { showToast('Gagal menambah mitra: ' + (err && err.message ? err.message : ''), true); });
+    }
+
+    function promptBayarHutang(id, nama, hutang) {
+      let jmlStr = prompt('Masukkan jumlah uang yang disetor ke ' + nama + ':\n(Saat ini hutang: Rp ' + Number(hutang).toLocaleString('id-ID') + ')');
+      if (jmlStr === null) return;
+      let jumlah = parseFloat(jmlStr) || 0;
+      if (jumlah <= 0) { showToast('Jumlah tidak valid!', true); return; }
+      callApi('bayarHutangMitra', { id: id, jumlah: jumlah }).then(function() {
+        showToast('Pembayaran hutang ke ' + nama + ' berhasil dicatat!');
+        loadKonsinyasi();
+      }).catch(function(err) { showToast('Gagal: ' + (err && err.message ? err.message : ''), true); });
     }
 
     function previewImage(input, previewId) {
@@ -618,7 +688,8 @@
         if (currentUser.role === 'admin') { actions = '<button class="btn-action" onclick="openProdukModal(\'' + esc(p[0]) + '\')">Edit</button><button class="btn-action danger" onclick="confirmDelete(\'' + esc(p[0]) + '\', \'produk\')">Hapus</button>'; }
         else { actions = '<span style="color:#999; font-size:11px;">Read Only</span>'; }
         let stokDisplay = p[8] && p[8].length > 0 ? p[8].length + ' IMEI' : p[5];
-        return '<tr><td><img src="' + esc(imgSrc) + '" loading="lazy"></td><td>' + esc(p[1]) + '</td><td>' + esc(p[2]) + '</td><td>' + esc(p[3]) + '</td><td>' + esc(p[6]) + '</td><td>Rp ' + Number(p[4]).toLocaleString('id-ID') + '</td><td>' + esc(stokDisplay) + '</td><td>' + actions + '</td></tr>';
+        let konsBadge = p[9] ? ' <span style="color:blue; font-size:10px;">[Konsinyasi]</span>' : '';
+        return '<tr><td><img src="' + esc(imgSrc) + '" loading="lazy"></td><td>' + esc(p[1]) + konsBadge + '</td><td>' + esc(p[2]) + '</td><td>' + esc(p[3]) + '</td><td>' + esc(p[6]) + '</td><td>Rp ' + Number(p[4]).toLocaleString('id-ID') + '</td><td>' + esc(stokDisplay) + '</td><td>' + actions + '</td></tr>';
       });
       tbody.innerHTML = rows.join('');
     }
@@ -636,6 +707,11 @@
       document.getElementById('produkImeiText').value = '';
       document.getElementById('produkFotoFile').value = '';
       document.getElementById('previewProdukFoto').style.display = 'none';
+      document.getElementById('produkIsKonsinyasi').checked = false;
+      toggleKonsinyasiForm();
+      document.getElementById('produkMitraId').value = '';
+      document.getElementById('produkHargaSetoran').value = '';
+      
       if (id) {
         document.getElementById('modalProdukTitle').innerText = 'Edit Produk';
         let p = allProduk.find(function (x) { return x[0] === id; });
@@ -653,9 +729,22 @@
             document.getElementById('produkImeiText').value = p[8].map(im => im.imei).join('\n');
           }
           if (p[7]) { document.getElementById('previewProdukFoto').src = p[7]; document.getElementById('previewProdukFoto').style.display = 'block'; }
+          if (p[9]) {
+            document.getElementById('produkIsKonsinyasi').checked = true;
+            toggleKonsinyasiForm();
+            document.getElementById('produkMitraId').value = p[10];
+            document.getElementById('produkHargaSetoran').value = p[11];
+          }
         }
       } else { document.getElementById('modalProdukTitle').innerText = 'Tambah Produk'; }
       document.getElementById('modalProduk').style.display = 'flex';
+    }
+
+    function toggleKonsinyasiForm() {
+      let cb = document.getElementById('produkIsKonsinyasi');
+      let area = document.getElementById('konsinyasiForm');
+      if (cb.checked) area.classList.remove('hidden');
+      else area.classList.add('hidden');
     }
 
     function saveProduk() {
@@ -671,9 +760,13 @@
         harga: document.getElementById('produkHarga').value,
         stok: document.getElementById('produkStok').value,
         imeiText: imeiText,
-        foto: getBase64Image('previewProdukFoto')
+        foto: getBase64Image('previewProdukFoto'),
+        isKonsinyasi: document.getElementById('produkIsKonsinyasi').checked,
+        mitraId: document.getElementById('produkMitraId').value,
+        hargaSetoran: document.getElementById('produkHargaSetoran').value
       };
       if (!data.nama || !data.harga) { showToast('Nama dan Harga wajib diisi!', true); return; }
+      if (data.isKonsinyasi && !data.mitraId) { showToast('Mitra wajib dipilih untuk produk konsinyasi!', true); return; }
       btn.innerText = 'Menyimpan...'; btn.disabled = true;
       if (!data.id) data.id = 'PRD' + new Date().getTime() + Math.floor(Math.random() * 1000);
       let isNew = !document.getElementById('produkId').value;
@@ -784,7 +877,6 @@
 
     function tambahKeranjang(hp, imei) {
       if (imei) {
-        // Cek jika IMEI sudah ada di keranjang
         if (keranjang.some(x => x.imei === imei)) { showToast('IMEI ini sudah ada di keranjang!', true); return; }
         keranjang.push({ id: hp[0], nama: hp[1], varian: hp[2], storage: hp[3], harga: Number(hp[4]), stok: 1, foto: hp[7], qty: 1, imei: imei });
       } else {
@@ -868,7 +960,7 @@
       
       document.getElementById('subTotalText').innerText = 'Rp ' + s.toLocaleString('id-ID');
       document.getElementById('totalBayar').innerText = 'Rp ' + total.toLocaleString('id-ID');
-      return { sub: s, diskonRp: diskonRp, total: total, diskonStr: dType === 'rp' ? dVal : dVal + '%', ttNama: document.getElementById('ttNama').value, ttImei: document.getElementById('ttImei').value, ttNilai: ttNilai };
+      return { sub: s, diskonRp: diskonRp, total: total, diskonStr: dType === 'rp' ? dVal : dVal + '%', ttNama: document.getElementById('ttNama').value, ttImei: document.getElementById('ttImei').value, ttNilai: ttNilai, masaGaransi: document.getElementById('masaGaransi').value };
     }
 
     function processCheckout() {
@@ -889,7 +981,8 @@
         metode: metode,
         ttNama: calc.ttNama,
         ttImei: calc.ttImei,
-        ttNilai: calc.ttNilai
+        ttNilai: calc.ttNilai,
+        masaGaransi: calc.masaGaransi
       }).then(function (res) {
         let tgl = new Date();
         let items = '';
@@ -945,8 +1038,9 @@
         keranjang = [];
         document.getElementById('namaPelanggan').value = '';
         document.getElementById('diskonInput').value = 0;
-        toggleTukarTambah(); // reset tt
+        toggleTukarTambah(); 
         document.getElementById('useTukarTambah').checked = false;
+        document.getElementById('masaGaransi').value = '0'; // Reset garansi
         isCheckingOut = false;
         btn.innerHTML = 'Bayar [Enter]';
         renderProduk(); renderKeranjang();
@@ -955,6 +1049,7 @@
         if (document.getElementById('view-dashboard').classList.contains('active')) loadDashboard();
         if (document.getElementById('view-produk').classList.contains('active')) loadTableProduk();
         if (document.getElementById('view-garansi').classList.contains('active')) loadGaransi();
+        if (document.getElementById('view-konsinyasi').classList.contains('active')) loadKonsinyasi();
       }).catch(function (err) {
         isCheckingOut = false;
         btn.innerHTML = 'Bayar [Enter]';
