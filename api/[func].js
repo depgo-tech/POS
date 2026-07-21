@@ -181,18 +181,6 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: "Mitra tidak ditemukan" });
     }
 
-    if (func === 'terimaPiutangMitra') {
-      const { id, jumlah } = body;
-      const { data: mitra } = await supabase.from('mitra').select('piutang').eq('id', id).single();
-      if (mitra) {
-        let newPiutang = Number(mitra.piutang) - Number(jumlah);
-        if (newPiutang < 0) newPiutang = 0;
-        await supabase.from('mitra').update({ piutang: newPiutang }).eq('id', id);
-        return res.json("Sukses");
-      }
-      return res.status(400).json({ error: "Mitra tidak ditemukan" });
-    }
-
     // --- FITUR KONSINYASI KELUAR (PIUTANG) ---
     if (func === 'addKonsinyasiKeluar') {
       const { mitraId, mitraNama, items, total } = body;
@@ -216,7 +204,7 @@ module.exports = async (req, res) => {
       
       await supabase.from('konsinyasi_keluar').insert([{
         id: id, tgl: tgl, mitra_id: mitraId, mitra_nama: mitraNama,
-        items: itemsStr, total: total, status: 'Belum Lunas'
+        items: itemsStr, total: total, status: 'Belum Lunas', terbayar: 0
       }]);
       
       const { data: mitra } = await supabase.from('mitra').select('piutang').eq('id', mitraId).single();
@@ -230,6 +218,25 @@ module.exports = async (req, res) => {
     if (func === 'getKonsinyasiKeluar') {
       const { data } = await supabase.from('konsinyasi_keluar').select('*').order('tgl', { ascending: false });
       return res.json(data || []);
+    }
+
+    if (func === 'lunasiKonsinyasiKeluar') {
+      const { id, jumlah } = body;
+      const { data: kk } = await supabase.from('konsinyasi_keluar').select('*').eq('id', id).single();
+      if (kk) {
+        let newTerbayar = Number(kk.terbayar || 0) + Number(jumlah);
+        let status = newTerbayar >= Number(kk.total) ? 'Lunas' : 'Belum Lunas';
+        await supabase.from('konsinyasi_keluar').update({ terbayar: newTerbayar, status: status }).eq('id', id);
+        
+        const { data: mitra } = await supabase.from('mitra').select('piutang').eq('id', kk.mitra_id).single();
+        if (mitra) {
+          let newPiutang = Number(mitra.piutang) - Number(jumlah);
+          if (newPiutang < 0) newPiutang = 0;
+          await supabase.from('mitra').update({ piutang: newPiutang }).eq('id', kk.mitra_id);
+        }
+        return res.json("Sukses");
+      }
+      return res.status(400).json({ error: "Data tidak ditemukan" });
     }
 
     // --- FUNGSI LAMA ---
