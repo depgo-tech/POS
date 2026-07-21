@@ -80,7 +80,6 @@ module.exports = async (req, res) => {
     if (func === 'simpanTransaksi') {
       const { keranjang, pelanggan, diskonStr, metode, ttNama, ttImei, ttNilai, masaGaransi } = body;
       
-      // Validasi Stok & IMEI
       for (let item of keranjang) {
         const { data: prod } = await supabase.from('produk').select('*').eq('id', item.id).single();
         if (!prod) return res.status(400).json({ error: 'Produk tidak ditemukan di database.' });
@@ -92,7 +91,6 @@ module.exports = async (req, res) => {
         }
       }
 
-      // Hitung Total
       let total = 0;
       let itemsArr = [];
       keranjang.forEach(item => {
@@ -117,14 +115,12 @@ module.exports = async (req, res) => {
         tt_nama: ttNama || null, tt_imei: ttImei || null, tt_nilai: nilaiTukar
       }]);
 
-      // Update Stok, IMEI, Garansi, & Hutang Konsinyasi
       for (let item of keranjang) {
         const { data: prod } = await supabase.from('produk').select('*').eq('id', item.id).single();
         if (item.imei) {
           let newImeis = (prod.imeis || []).filter(im => im.imei !== item.imei);
           await supabase.from('produk').update({ imeis: newImeis, stok: newImeis.length }).eq('id', item.id);
           
-          // Masukkan ke tabel Garansi dengan masa garansi dari input kasir
           await supabase.from('garansi').insert([{
             id: 'GR' + Date.now() + Math.floor(Math.random() * 1000),
             no_invoice: idTrx, tgl: tgl, imei: item.imei,
@@ -136,7 +132,6 @@ module.exports = async (req, res) => {
           await supabase.from('produk').update({ stok: newStok }).eq('id', item.id);
         }
 
-        // Jika produk konsinyasi, tambahkan hutang ke mitra
         if (prod.is_konsinyasi && prod.mitra_id) {
           let tambahanHutang = Number(prod.harga_setoran || 0) * Number(item.qty);
           const { data: mitra } = await supabase.from('mitra').select('hutang').eq('id', prod.mitra_id).single();
@@ -170,7 +165,7 @@ module.exports = async (req, res) => {
       const { nama, telp } = body;
       if (!nama) return res.status(400).json({ error: "Nama mitra wajib diisi!" });
       let id = 'MTR' + Date.now();
-      await supabase.from('mitra').insert([{ id: id, nama: nama, telp: telp || '', hutang: 0 }]);
+      await supabase.from('mitra').insert([{ id: id, nama: nama, telp: telp || '', hutang: 0, piutang: 0 }]);
       return res.json("Sukses");
     }
 
@@ -184,6 +179,57 @@ module.exports = async (req, res) => {
         return res.json("Sukses");
       }
       return res.status(400).json({ error: "Mitra tidak ditemukan" });
+    }
+
+    if (func === 'terimaPiutangMitra') {
+      const { id, jumlah } = body;
+      const { data: mitra } = await supabase.from('mitra').select('piutang').eq('id', id).single();
+      if (mitra) {
+        let newPiutang = Number(mitra.piutang) - Number(jumlah);
+        if (newPiutang < 0) newPiutang = 0;
+        await supabase.from('mitra').update({ piutang: newPiutang }).eq('id', id);
+        return res.json("Sukses");
+      }
+      return res.status(400).json({ error: "Mitra tidak ditemukan" });
+    }
+
+    // --- FITUR KONSINYASI KELUAR (PIUTANG) ---
+    if (func === 'addKonsinyasiKeluar') {
+      const { mitraId, mitraNama, items, total } = body;
+      let tgl = new Date().toISOString();
+      let id = 'KK' + Date.now();
+      
+      for (let item of items) {
+        const { data: prod } = await supabase.from('produk').select('*').eq('id', item.id).single();
+        if (prod) {
+          if (item.imei) {
+            let newImeis = (prod.imeis || []).filter(im => im.imei !== item.imei);
+            await supabase.from('produk').update({ imeis: newImeis, stok: newImeis.length }).eq('id', item.id);
+          } else {
+            let newStok = Number(prod.stok) - Number(item.qty);
+            await supabase.from('produk').update({ stok: newStok }).eq('id', item.id);
+          }
+        }
+      }
+      
+      let itemsStr = items.map(i => i.nama + (i.imei ? ' ['+i.imei+']' : ' x'+i.qty)).join(', ');
+      
+      await supabase.from('konsinyasi_keluar').insert([{
+        id: id, tgl: tgl, mitra_id: mitraId, mitra_nama: mitraNama,
+        items: itemsStr, total: total, status: 'Belum Lunas'
+      }]);
+      
+      const { data: mitra } = await supabase.from('mitra').select('piutang').eq('id', mitraId).single();
+      if (mitra) {
+        await supabase.from('mitra').update({ piutang: Number(mitra.piutang) + Number(total) }).eq('id', mitraId);
+      }
+      
+      return res.json("Sukses");
+    }
+
+    if (func === 'getKonsinyasiKeluar') {
+      const { data } = await supabase.from('konsinyasi_keluar').select('*').order('tgl', { ascending: false });
+      return res.json(data || []);
     }
 
     // --- FUNGSI LAMA ---
