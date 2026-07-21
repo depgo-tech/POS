@@ -213,6 +213,22 @@
           <div class="table-scroll"><table class="data-table"><thead><tr><th>Foto</th><th>Nama Produk</th><th>Varian</th><th>Storage</th><th>Kategori</th><th>Harga</th><th>Stok</th><th>Aksi</th></tr></thead><tbody id="tableProduk"></tbody></table></div>
         </div>
 
+        <div id="view-stok" class="view" style="padding: 25px;">
+          <div class="dashboard-header">
+            <div><h2>Stok & Opname</h2><p>Catat barang masuk, barang keluar (rusak/hilang), dan lakukan stock opname.</p></div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button class="btn-add" style="margin:0;" onclick="openStokModal('masuk')">+ Stok Masuk</button>
+              <button class="btn-add" style="margin:0; background:#dc3545;" onclick="openStokModal('keluar')">+ Stok Keluar</button>
+              <button class="btn-add" style="margin:0; background:#555;" onclick="openOpnameModal()">Mulai Opname</button>
+            </div>
+          </div>
+          
+          <div class="card-box">
+            <h3 style="margin-bottom: 15px; font-size: 16px;">Riwayat Pergerakan Stok (100 Terakhir)</h3>
+            <div class="table-scroll"><table class="data-table"><thead><tr><th>Tgl</th><th>Produk</th><th>Tipe</th><th>Selisih</th><th>Stok Sistem</th><th>Stok Fisik</th><th>Keterangan</th></tr></thead><tbody id="tableStokLog"></tbody></table></div>
+          </div>
+        </div>
+
         <div id="view-riwayat" class="view" style="padding: 25px;">
           <div class="dashboard-header">
             <div><h2>Riwayat Transaksi</h2><p>Menampilkan transaksi hari ini secara default. Ubah rentang tanggal untuk membandingkan periode lain.</p></div>
@@ -364,6 +380,27 @@
     </div>
   </div>
   
+  <div class="modal-overlay" id="modalStok">
+    <div class="modal-content" style="max-width: 400px;">
+      <h3 id="modalStokTitle">Stok Masuk</h3>
+      <div class="form-group"><label>Pilih Produk</label><select id="stokProdukId"></select></div>
+      <div class="form-group"><label>Jumlah</label><input type="number" id="stokJumlah" value="1" min="1"></div>
+      <div class="form-group"><label>Keterangan</label><input type="text" id="stokKeterangan" placeholder="Contoh: Restock dari supplier / Barang rusak"></div>
+      <button class="btn-save" id="btnSaveStok" onclick="submitStok()">Proses</button>
+      <button class="btn-close-modal" onclick="closeModal('modalStok')">Batal</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalOpname">
+    <div class="modal-content" style="max-width: 600px;">
+      <h3>Stock Opname (Perhitungan Fisik)</h3>
+      <p style="font-size:13px; color:#666; margin-bottom:15px;">Isi stok fisik sesuai dengan hitungan asli. Jika ada selisih, sistem akan menyesuaikan otomatis.</p>
+      <div id="opnameList" style="max-height:400px; overflow-y:auto; border:1px solid #eee; border-radius:8px; margin-bottom:15px;"></div>
+      <button class="btn-save" id="btnSaveOpname" onclick="submitOpname()">Proses Opname</button>
+      <button class="btn-close-modal" onclick="closeModal('modalOpname')">Batal</button>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="modalFinansial">
     <div class="modal-content" style="max-width: 400px; text-align: center;">
       <h3 id="modalFinTitle" style="border:none;">Pembayaran</h3>
@@ -459,11 +496,13 @@
     let keranjangKonsinyasi = []; 
     let modalFinContext = null;
     let modalPromptTextContext = null;
+    let modalStokContext = null;
 
     var MENU = [
       { page:'dashboard', label:'Dashboard', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>', adminOnly:true },
       { page:'pos', label:'POS / Kasir', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>' },
       { page:'produk', label:'Master Barang', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>' },
+      { page:'stok', label:'Stok & Opname', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h9M20 12h9M20 17h9M3 7h.01M3 12h.01M3 17h.01"/></svg>', adminOnly:true },
       { page:'riwayat', label:'Riwayat Trx', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>' },
       { page:'garansi', label:'Garansi', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>' },
       { page:'konsinyasi', label:'Konsinyasi', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>', adminOnly:true },
@@ -588,6 +627,7 @@
       }
       if (page === 'pos') renderProduk();
       if (page === 'produk') loadTableProduk();
+      if (page === 'stok') loadStokLog();
       if (page === 'garansi') loadGaransi();
       if (page === 'konsinyasi') loadKonsinyasi();
       if (page === 'riwayat') {
@@ -610,7 +650,7 @@
     }
 
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') { closeModal('modalProduk'); closeModal('modalStruk'); closeModal('modalVariant'); closeModal('modalImei'); closeModal('modalConfirm'); closeModal('modalKonsinyasiKeluar'); closeModal('modalFinansial'); closeModal('modalPromptText'); closeScanner(); }
+      if (e.key === 'Escape') { closeModal('modalProduk'); closeModal('modalStruk'); closeModal('modalVariant'); closeModal('modalImei'); closeModal('modalConfirm'); closeModal('modalKonsinyasiKeluar'); closeModal('modalFinansial'); closeModal('modalPromptText'); closeModal('modalStok'); closeModal('modalOpname'); closeScanner(); }
       if (e.key === 'Enter') {
         let active = document.activeElement;
         if (active.tagName !== 'INPUT' && active.tagName !== 'SELECT' && active.tagName !== 'TEXTAREA') { if (document.getElementById('btnCheckout') && !document.getElementById('btnCheckout').disabled) { processCheckout(); } }
@@ -703,6 +743,110 @@
         html += '<tr style="border-bottom:1px solid #f5f5f5;"><td style="padding:12px; font-weight:500;">' + esc(r.invoice) + '</td><td style="padding:12px; color:var(--text-gray);">' + esc(dateStr) + '</td><td style="padding:12px;">' + esc(r.pelanggan) + '</td><td style="padding:12px; font-size:12px;">' + esc(r.produk) + '</td><td style="padding:12px; font-size:12px;">' + esc(r.imei) + '</td><td style="padding:12px;">' + esc(masaTxt) + '</td><td style="padding:12px; color:' + (isExp ? 'red' : 'green') + '; font-weight:600;">' + esc(expStr) + '</td></tr>';
       });
       t.innerHTML = html;
+    }
+
+    function loadStokLog() {
+      let t = document.getElementById('tableStokLog');
+      t.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999; padding:20px;">Memuat riwayat stok...</td></tr>';
+      callApi('getStokLog', {}).then(function(data) {
+        if (!data || data.length === 0) { t.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999; padding:20px;">Belum ada riwayat pergerakan stok</td></tr>'; return; }
+        let html = '';
+        data.forEach(function(l) {
+          let dateStr = new Date(l.tgl).toLocaleString('id-ID');
+          let tipeColor = l.tipe === 'masuk' ? 'green' : (l.tipe === 'keluar' ? 'red' : 'blue');
+          let tipeText = l.tipe === 'masuk' ? 'Stok Masuk' : (l.tipe === 'keluar' ? 'Stok Keluar' : 'Opname');
+          let selisihText = l.jumlah > 0 ? '+' + l.jumlah : l.jumlah;
+          html += '<tr style="border-bottom:1px solid #f5f5f5;"><td>' + esc(dateStr) + '</td><td>' + esc(l.produk_nama) + '</td><td style="color:'+tipeColor+'; font-weight:600;">' + tipeText + '</td><td>' + selisihText + '</td><td>' + l.stok_sistem + '</td><td>' + l.stok_fisik + '</td><td style="font-size:12px;">' + esc(l.keterangan || '-') + '</td></tr>';
+        });
+        t.innerHTML = html;
+      }).catch(function(err) { t.innerHTML = '<tr><td colspan="7" style="text-align:center; color:red; padding:20px;">Error: ' + esc(err.message) + '</td></tr>'; });
+    }
+
+    function openStokModal(type) {
+      modalStokContext = type;
+      let prodSelect = document.getElementById('stokProdukId');
+      // Filter produk tanpa IMEI (Aksesoris) karena IMEI harus input manual di master barang
+      let nonImeiProduk = allProduk.filter(p => !p[8] || p[8].length === 0);
+      prodSelect.innerHTML = nonImeiProduk.map(p => `<option value="${p[0]}">${esc(p[1])} ${esc(p[2])} (Stok: ${p[5]})</option>`).join('');
+      
+      document.getElementById('modalStokTitle').innerText = type === 'masuk' ? 'Stok Masuk' : 'Stok Keluar (Rusak/Hilang)';
+      document.getElementById('stokJumlah').value = 1;
+      document.getElementById('stokKeterangan').value = '';
+      
+      let btn = document.getElementById('btnSaveStok');
+      btn.disabled = false;
+      btn.innerText = 'Proses';
+      btn.style.background = type === 'masuk' ? '#000' : '#dc3545';
+      
+      document.getElementById('modalStok').style.display = 'flex';
+    }
+
+    function submitStok() {
+      let produkId = document.getElementById('stokProdukId').value;
+      let jumlah = parseInt(document.getElementById('stokJumlah').value) || 0;
+      let keterangan = document.getElementById('stokKeterangan').value.trim();
+      let p = allProduk.find(x => x[0] === produkId);
+      if (!p || jumlah <= 0) { showToast('Data tidak valid!', true); return; }
+      
+      let btn = document.getElementById('btnSaveStok');
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner-white"></div> Memproses...';
+
+      let apiFunc = modalStokContext === 'masuk' ? 'addStokMasuk' : 'addStokKeluar';
+      callApi(apiFunc, { produkId, produkNama: p[1] + ' ' + p[2], jumlah, keterangan }).then(function() {
+        showToast('Stok berhasil diupdate!');
+        closeModal('modalStok');
+        refreshProdukFromServer();
+        loadStokLog();
+      }).catch(function(err) { 
+        showToast('Gagal: ' + (err && err.message ? err.message : ''), true); 
+        btn.disabled = false;
+        btn.innerText = 'Proses';
+      });
+    }
+
+    function openOpnameModal() {
+      let list = document.getElementById('opnameList');
+      let nonImeiProduk = allProduk.filter(p => !p[8] || p[8].length === 0);
+      let html = '<table class="data-table" style="min-width:100%;"><thead><tr><th>Produk</th><th>Stok Sistem</th><th>Stok Fisik</th></tr></thead><tbody>';
+      nonImeiProduk.forEach(function(p) {
+        html += `<tr><td>${esc(p[1])} ${esc(p[2])}</td><td style="text-align:center;">${p[5]}</td><td style="text-align:center;"><input type="number" class="opname-input" data-id="${p[0]}" data-nama="${esc(p[1])}" data-sistem="${p[5]}" value="${p[5]}" style="width:70px; text-align:center; border:1px solid #ddd; border-radius:4px; padding:4px;"></td></tr>`;
+      });
+      html += '</tbody></table>';
+      list.innerHTML = html;
+      
+      let btn = document.getElementById('btnSaveOpname');
+      btn.disabled = false;
+      btn.innerText = 'Proses Opname';
+      document.getElementById('modalOpname').style.display = 'flex';
+    }
+
+    function submitOpname() {
+      let inputs = document.querySelectorAll('.opname-input');
+      let items = [];
+      inputs.forEach(function(inp) {
+        items.push({
+          id: inp.getAttribute('data-id'),
+          nama: inp.getAttribute('data-nama'),
+          stokSistem: parseInt(inp.getAttribute('data-sistem')),
+          stokFisik: parseInt(inp.value)
+        });
+      });
+
+      let btn = document.getElementById('btnSaveOpname');
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner-white"></div> Menyimpan...';
+
+      callApi('submitOpname', { items }).then(function() {
+        showToast('Stock Opname berhasil diproses!');
+        closeModal('modalOpname');
+        refreshProdukFromServer();
+        loadStokLog();
+      }).catch(function(err) { 
+        showToast('Gagal: ' + (err && err.message ? err.message : ''), true); 
+        btn.disabled = false;
+        btn.innerText = 'Proses Opname';
+      });
     }
 
     function loadKonsinyasi() {
@@ -1272,6 +1416,7 @@
         if (document.getElementById('view-produk').classList.contains('active')) loadTableProduk();
         if (document.getElementById('view-garansi').classList.contains('active')) loadGaransi();
         if (document.getElementById('view-konsinyasi').classList.contains('active')) loadKonsinyasi();
+        if (document.getElementById('view-stok').classList.contains('active')) loadStokLog();
       }).catch(function (err) {
         isCheckingOut = false;
         btn.innerHTML = 'Bayar [Enter]';
