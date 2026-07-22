@@ -775,7 +775,7 @@
       document.getElementById('stokImeiText').value = '';
       document.getElementById('stokKeterangan').value = '';
       
-      toggleStokImeiInput(); // Cek apakah produk yg terpilih punya IMEI
+      toggleStokImeiInput();
 
       let btn = document.getElementById('btnSaveStok');
       btn.disabled = false;
@@ -788,9 +788,6 @@
     function toggleStokImeiInput() {
       let prodId = document.getElementById('stokProdukId').value;
       let p = allProduk.find(x => x[0] === prodId);
-      // Jika produk punya IMEI di master barang (tapi saat ini kosong karena dipisah), 
-      // kita anggap produk Handphone/Tablet memerlukan input IMEI.
-      // Untuk simplicity, kita cek kategori.
       if (p && (p[6] === 'Handphone' || p[6] === 'Tablet')) {
         document.getElementById('stokImeiArea').classList.remove('hidden');
         document.getElementById('stokJumlahArea').classList.add('hidden');
