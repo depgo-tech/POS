@@ -54,7 +54,6 @@ module.exports = async (req, res) => {
       const data = body;
       if (!data.nama || data.harga === '' || data.harga === undefined) return res.status(400).json({ error: 'Nama dan Harga wajib diisi.' });
       
-      // Master Barang tidak lagi mengatur stok/IMEI. Stok diatur 0 default, IMEI dikosongkan.
       const payload = {
         id: data.id, nama: data.nama, varian: data.varian, storage: data.storage, 
         harga: Number(data.harga), stok: 0, 
@@ -66,7 +65,6 @@ module.exports = async (req, res) => {
       
       const { data: existing } = await supabase.from('produk').select('id').eq('id', data.id).single();
       if (existing) {
-        // Saat edit, jangan timpa stok dan imeis yang sudah ada di database
         const { data: currentProd } = await supabase.from('produk').select('stok, imeis').eq('id', data.id).single();
         payload.stok = currentProd.stok;
         payload.imeis = currentProd.imeis || [];
@@ -274,16 +272,19 @@ module.exports = async (req, res) => {
         let newImeis = prod.imeis || [];
         let stokBaru = stokLama;
         let ket = keterangan || 'Restock';
+        let jmlLog = 0;
 
         if (imeiText) {
           let newImeiList = String(imeiText).split('\n').map(s => s.trim()).filter(Boolean);
           newImeiList.forEach(i => newImeis.push({ imei: i, status: 'tersedia' }));
           stokBaru = stokLama + newImeiList.length;
+          jmlLog = newImeiList.length;
           ket = 'Tambah IMEI (' + newImeiList.length + ' unit)';
           await supabase.from('produk').update({ stok: stokBaru, imeis: newImeis }).eq('id', produkId);
         } else {
           if (jumlah <= 0) return res.status(400).json({ error: "Jumlah tidak valid" });
           stokBaru = stokLama + Number(jumlah);
+          jmlLog = Number(jumlah);
           await supabase.from('produk').update({ stok: stokBaru }).eq('id', produkId);
         }
         
@@ -291,7 +292,7 @@ module.exports = async (req, res) => {
         let tgl = new Date().toISOString();
         await supabase.from('stok_log').insert([{
           id, tgl, produk_id: produkId, produk_nama: produkNama,
-          tipe: 'masuk', jumlah: Number(jumlah) || newImeiList.length, stok_sistem: stokLama, stok_fisik: stokBaru, keterangan: ket
+          tipe: 'masuk', jumlah: jmlLog, stok_sistem: stokLama, stok_fisik: stokBaru, keterangan: ket
         }]);
         return res.json("Sukses");
       }
@@ -306,16 +307,19 @@ module.exports = async (req, res) => {
         let newImeis = prod.imeis || [];
         let stokBaru = stokLama;
         let ket = keterangan || 'Rusak/Hilang';
+        let jmlLog = 0;
 
         if (imei) {
           newImeis = newImeis.filter(im => im.imei !== imei);
           stokBaru = newImeis.length;
+          jmlLog = 1;
           ket = 'Buang IMEI: ' + imei;
           await supabase.from('produk').update({ stok: stokBaru, imeis: newImeis }).eq('id', produkId);
         } else {
           if (jumlah <= 0) return res.status(400).json({ error: "Jumlah tidak valid" });
           if (stokLama < Number(jumlah)) return res.status(400).json({ error: "Stok sistem tidak cukup" });
           stokBaru = stokLama - Number(jumlah);
+          jmlLog = Number(jumlah);
           await supabase.from('produk').update({ stok: stokBaru }).eq('id', produkId);
         }
         
@@ -323,7 +327,7 @@ module.exports = async (req, res) => {
         let tgl = new Date().toISOString();
         await supabase.from('stok_log').insert([{
           id, tgl, produk_id: produkId, produk_nama: produkNama,
-          tipe: 'keluar', jumlah: -Number(jumlah) || -1, stok_sistem: stokLama, stok_fisik: stokBaru, keterangan: ket
+          tipe: 'keluar', jumlah: -jmlLog, stok_sistem: stokLama, stok_fisik: stokBaru, keterangan: ket
         }]);
         return res.json("Sukses");
       }
