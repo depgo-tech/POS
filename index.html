@@ -606,7 +606,6 @@
         }
         document.getElementById('sidebarTitle').innerText = (d && d[0]) || 'Toko Saya';
         
-        // Set payment settings
         if(d[6]) document.getElementById('previewSetQris').src = d[6]; 
         if(d[6]) document.getElementById('previewSetQris').style.display = 'block';
         if(d[7]) document.getElementById('setRekBca').value = d[7];
@@ -1161,7 +1160,7 @@
       let data = {
         id: document.getElementById('produkId').value || barcodeInput,
         nama: document.getElementById('produkNama').value.trim(),
-        varian: document.getElementById('produkVarian).value.trim(),
+        varian: document.getElementById('produkVarian').value.trim(),
         storage: document.getElementById('produkStorage').value.trim(),
         kategori: document.getElementById('produkKategori').value,
         harga: document.getElementById('produkHarga').value,
