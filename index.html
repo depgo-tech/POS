@@ -201,7 +201,7 @@
                 </div>
 
                 <div class="pay-row"><span>Pilih Garansi</span><select id="masaGaransi"><option value="0">Tidak Bergaransi</option><option value="1">1 Bulan (Toko)</option><option value="3">3 Bulan (Toko)</option><option value="6">6 Bulan (Toko)</option><option value="12">12 Bulan (Distributor)</option><option value="24">24 Bulan (Ibox)</option></select></div>
-                <div class="pay-row"><span>Metode Bayar</span><select id="metodeBayar"><option value="Cash">Cash</option><option value="QRIS">QRIS</option><option value="Debit">Debit</option><option value="E-Wallet">E-Wallet</option></select></div>
+                <div class="pay-row"><span>Metode Bayar</span><select id="metodeBayar" onchange="toggleMetodeBayar()"><option value="Cash">Cash</option><option value="QRIS">QRIS</option><option value="Transfer BCA">Transfer BCA</option><option value="Transfer Mandiri">Transfer Mandiri</option><option value="GoPay">GoPay</option><option value="DANA">DANA</option></select></div>
                 <div class="grand-total"><span>Total</span><span id="totalBayar">Rp 0</span></div>
                 <input type="text" id="namaPelanggan" class="input-cust" placeholder="Nama customer (opsional)" tabindex="2">
                 <button class="checkout-btn" id="btnCheckout" onclick="processCheckout()" disabled>Bayar [Enter]</button>
@@ -312,11 +312,28 @@
             <div class="form-group"><label>Footer Struk</label><input type="text" id="setFooterInput"></div>
             <div class="form-group"><label>Logo Toko (Tampil di Sidebar)</label><input type="file" id="setLogoFile" accept="image/*" onchange="previewImage(this, 'previewSetLogo')"><img id="previewSetLogo" class="preview-img" style="display:none;"></div>
             <div class="form-group"><label>Logo Struk (Tampil di print struk)</label><input type="file" id="setStrukLogoFile" accept="image/*" onchange="previewImage(this, 'previewSetStrukLogo')"><img id="previewSetStrukLogo" class="preview-img" style="display:none;"></div>
+            
+            <h3 style="margin: 20px 0 10px; font-size: 16px; border-bottom: 1px solid #eee; padding-bottom: 10px;">Metode Pembayaran Digital</h3>
+            <div class="form-group"><label>Upload Gambar QRIS</label><input type="file" id="setQrisFile" accept="image/*" onchange="previewImage(this, 'previewSetQris')"><img id="previewSetQris" class="preview-img" style="display:none; max-width:150px;"></div>
+            <div class="form-group"><label>No. Rekening BCA</label><input type="text" id="setRekBca" placeholder="1234567890 (a/n Benk Cell)"></div>
+            <div class="form-group"><label>No. Rekening Mandiri</label><input type="text" id="setRekMandiri" placeholder="1234567890 (a/n Benk Cell)"></div>
+            <div class="form-group"><label>No. GoPay</label><input type="text" id="setRekGopay" placeholder="0812xxxx (a/n Benk Cell)"></div>
+            <div class="form-group"><label>No. DANA</label><input type="text" id="setRekDana" placeholder="0812xxxx (a/n Benk Cell)"></div>
+
             <button class="btn-save" id="btnSaveSetting" onclick="savePengaturan()">Simpan Pengaturan</button>
           </div>
         </div>
       </div>
       <div class="watermark">Design & Develop By <a href="https://depgo.tech" target="_blank">Depgo</a></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalPembayaran">
+    <div class="modal-content" style="max-width: 350px; text-align:center;">
+      <h3 id="payModalTitle" style="border:none;">Pembayaran QRIS</h3>
+      <div id="payModalBody" style="margin-bottom:20px;"></div>
+      <button class="btn-save" onclick="confirmPayment()">Konfirmasi Pembayaran Diterima</button>
+      <button class="btn-close-modal" onclick="closeModal('modalPembayaran')">Batal</button>
     </div>
   </div>
 
@@ -588,6 +605,14 @@
           document.getElementById('favicon').href = d[4]; 
         }
         document.getElementById('sidebarTitle').innerText = (d && d[0]) || 'Toko Saya';
+        
+        // Set payment settings
+        if(d[6]) document.getElementById('previewSetQris').src = d[6]; 
+        if(d[6]) document.getElementById('previewSetQris').style.display = 'block';
+        if(d[7]) document.getElementById('setRekBca').value = d[7];
+        if(d[8]) document.getElementById('setRekMandiri').value = d[8];
+        if(d[9]) document.getElementById('setRekGopay').value = d[9];
+        if(d[10]) document.getElementById('setRekDana').value = d[10];
       }).catch(function(){});
       
       refreshProdukFromServer(function() {
@@ -653,7 +678,7 @@
     }
 
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') { closeModal('modalProduk'); closeModal('modalStruk'); closeModal('modalVariant'); closeModal('modalImei'); closeModal('modalConfirm'); closeModal('modalKonsinyasiKeluar'); closeModal('modalFinansial'); closeModal('modalPromptText'); closeModal('modalStok'); closeModal('modalOpname'); closeScanner(); }
+      if (e.key === 'Escape') { closeModal('modalProduk'); closeModal('modalStruk'); closeModal('modalVariant'); closeModal('modalImei'); closeModal('modalConfirm'); closeModal('modalKonsinyasiKeluar'); closeModal('modalFinansial'); closeModal('modalPromptText'); closeModal('modalStok'); closeModal('modalOpname'); closeModal('modalPembayaran'); closeScanner(); }
       if (e.key === 'Enter') {
         let active = document.activeElement;
         if (active.tagName !== 'INPUT' && active.tagName !== 'SELECT' && active.tagName !== 'TEXTAREA') { if (document.getElementById('btnCheckout') && !document.getElementById('btnCheckout').disabled) { processCheckout(); } }
@@ -799,7 +824,7 @@
 
     function submitStok() {
       let produkId = document.getElementById('stokProdukId').value;
-      let p = allProduk.find(x => x[0] === produkId);
+      let p = allProduk.find(x => x[0] === prodId);
       if (!p) { showToast('Data tidak valid!', true); return; }
       
       let payload = { produkId, produkNama: p[1] + ' ' + p[2], keterangan: document.getElementById('stokKeterangan').value.trim() };
@@ -1136,7 +1161,7 @@
       let data = {
         id: document.getElementById('produkId').value || barcodeInput,
         nama: document.getElementById('produkNama').value.trim(),
-        varian: document.getElementById('produkVarian').value.trim(),
+        varian: document.getElementById('produkVarian).value.trim(),
         storage: document.getElementById('produkStorage').value.trim(),
         kategori: document.getElementById('produkKategori').value,
         harga: document.getElementById('produkHarga').value,
@@ -1343,8 +1368,65 @@
       return { sub: s, diskonRp: diskonRp, total: total, diskonStr: dType === 'rp' ? dVal : dVal + '%', ttNama: document.getElementById('ttNama').value, ttImei: document.getElementById('ttImei').value, ttNilai: ttNilai, masaGaransi: document.getElementById('masaGaransi').value };
     }
 
+    function toggleMetodeBayar() {
+      let metode = document.getElementById('metodeBayar').value;
+      if (metode !== 'Cash' && currentSettings && currentSettings.length > 0) {
+        let s = currentSettings;
+        if (metode === 'QRIS' && !s[6]) { showToast('QRIS belum diatur di Pengaturan. Kasir bisa langsung konfirmasi manual.', true); }
+        if (metode === 'Transfer BCA' && !s[7]) { showToast('Rekening BCA belum diatur di Pengaturan.', true); }
+        if (metode === 'Transfer Mandiri' && !s[8]) { showToast('Rekening Mandiri belum diatur di Pengaturan.', true); }
+        if (metode === 'GoPay' && !s[9]) { showToast('Nomor GoPay belum diatur di Pengaturan.', true); }
+        if (metode === 'DANA' && !s[10]) { showToast('Nomor DANA belum diatur di Pengaturan.', true); }
+      }
+    }
+
     function processCheckout() {
       if (keranjang.length === 0 || isCheckingOut) return;
+      let metode = document.getElementById('metodeBayar').value;
+      
+      if (metode !== 'Cash') {
+        openPaymentModal(metode);
+      } else {
+        executeCheckout();
+      }
+    }
+
+    function openPaymentModal(metode) {
+      document.getElementById('payModalTitle').innerText = 'Pembayaran via ' + metode;
+      let body = document.getElementById('payModalBody');
+      let s = currentSettings || [];
+      
+      if (metode === 'QRIS' && s[6]) {
+        body.innerHTML = '<img src="'+s[6]+'" style="width:200px; border:1px solid #eee; border-radius:8px; padding:5px; margin-bottom:10px;"><p style="font-size:13px; color:#666;">Minta pelanggan scan QR di atas. Klik konfirmasi jika uang sudah masuk.</p>';
+      } else if (metode === 'Transfer BCA' && s[7]) {
+        body.innerHTML = '<p style="font-size:14px;">No. Rekening: <strong>'+s[7]+'</strong></p><button class="btn-action" onclick="copyText(\''+s[7]+'\')">Salin No. Rek</button><p style="font-size:13px; color:#666; margin-top:10px;">Klik konfirmasi jika transferan sudah masuk.</p>';
+      } else if (metode === 'Transfer Mandiri' && s[8]) {
+        body.innerHTML = '<p style="font-size:14px;">No. Rekening: <strong>'+s[8]+'</strong></p><button class="btn-action" onclick="copyText(\''+s[8]+'\')">Salin No. Rek</button><p style="font-size:13px; color:#666; margin-top:10px;">Klik konfirmasi jika transferan sudah masuk.</p>';
+      } else if (metode === 'GoPay' && s[9]) {
+        body.innerHTML = '<p style="font-size:14px;">No. GoPay: <strong>'+s[9]+'</strong></p><button class="btn-action" onclick="copyText(\''+s[9]+'\')">Salin No. GoPay</button><p style="font-size:13px; color:#666; margin-top:10px;">Klik konfirmasi jika transferan sudah masuk.</p>';
+      } else if (metode === 'DANA' && s[10]) {
+        body.innerHTML = '<p style="font-size:14px;">No. DANA: <strong>'+s[10]+'</strong></p><button class="btn-action" onclick="copyText(\''+s[10]+'\')">Salin No. DANA</button><p style="font-size:13px; color:#666; margin-top:10px;">Klik konfirmasi jika transferan sudah masuk.</p>';
+      } else {
+        body.innerHTML = '<p style="font-size:13px; color:#666;">Data pembayaran ini belum diatur di menu Pengaturan. Silakan cek manual ke aplikasi m-banking/DANA/GoPay Anda. Klik konfirmasi jika uang sudah diterima.</p>';
+      }
+      
+      document.getElementById('modalPembayaran').style.display = 'flex';
+    }
+
+    function copyText(txt) {
+      navigator.clipboard.writeText(txt).then(function() {
+        showToast('Nomor disalin ke clipboard!');
+      }, function(err) {
+        showToast('Gagal menyalin. Silakan copy manual.', true);
+      });
+    }
+
+    function confirmPayment() {
+      closeModal('modalPembayaran');
+      executeCheckout();
+    }
+
+    function executeCheckout() {
       isCheckingOut = true;
       let btn = document.getElementById('btnCheckout');
       btn.disabled = true;
@@ -1521,12 +1603,19 @@
         telp: document.getElementById('setTelpInput').value,
         footer: document.getElementById('setFooterInput').value,
         logoToko: getBase64Image('previewSetLogo'),
-        logoStruk: getBase64Image('previewSetStrukLogo')
+        logoStruk: getBase64Image('previewSetStrukLogo'),
+        qrisImg: getBase64Image('previewSetQris'),
+        rekBca: document.getElementById('setRekBca').value,
+        rekMandiri: document.getElementById('setRekMandiri').value,
+        rekGopay: document.getElementById('setRekGopay').value,
+        rekDana: document.getElementById('setRekDana').value
       };
       if (!data.logoToko && currentSettings[4]) data.logoToko = currentSettings[4];
       if (!data.logoStruk && currentSettings[5]) data.logoStruk = currentSettings[5];
+      if (!data.qrisImg && currentSettings[6]) data.qrisImg = currentSettings[6];
+      
       callApi('savePengaturan', data).then(function() {
-        currentSettings = [data.nama, data.alamat, data.telp, data.footer, data.logoToko, data.logoStruk];
+        currentSettings = [data.nama, data.alamat, data.telp, data.footer, data.logoToko, data.logoStruk, data.qrisImg, data.rekBca, data.rekMandiri, data.rekGopay, data.rekDana];
         if (data.logoToko) { document.getElementById('sidebarLogo').src = data.logoToko; document.getElementById('sidebarLogo').style.display = 'block'; document.getElementById('favicon').href = data.logoToko; }
         document.getElementById('sidebarTitle').innerText = data.nama;
         showToast('Pengaturan disimpan!');
