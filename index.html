@@ -798,8 +798,8 @@
     }
 
     function toggleStokImeiInput() {
-      let prodId = document.getElementById('stokProdukId').value;
-      let p = allProduk.find(x => x[0] === prodId);
+      let produkId = document.getElementById('stokProdukId').value;
+      let p = allProduk.find(x => x[0] === produkId);
       if (p && (p[6] === 'Handphone' || p[6] === 'Tablet')) {
         document.getElementById('stokImeiArea').classList.remove('hidden');
         document.getElementById('stokJumlahArea').classList.add('hidden');
@@ -811,7 +811,7 @@
 
     function submitStok() {
       let produkId = document.getElementById('stokProdukId').value;
-      let p = allProduk.find(x => x[0] === prodId);
+      let p = allProduk.find(x => x[0] === produkId);
       if (!p) { showToast('Data tidak valid!', true); return; }
       
       let payload = { produkId, produkNama: p[1] + ' ' + p[2], keterangan: document.getElementById('stokKeterangan').value.trim() };
@@ -974,8 +974,8 @@
     }
 
     function updateKonsinyasiImeiOptions() {
-      let prodId = document.getElementById('kkProdukId').value;
-      let p = allProduk.find(x => x[0] === prodId);
+      let produkId = document.getElementById('kkProdukId').value;
+      let p = allProduk.find(x => x[0] === produkId);
       if (p && p[8] && p[8].length > 0) {
         document.getElementById('kkImeiArea').classList.remove('hidden');
         document.getElementById('kkQtyArea').classList.add('hidden');
@@ -988,8 +988,8 @@
     }
 
     function tambahKeranjangKonsinyasi() {
-      let prodId = document.getElementById('kkProdukId').value;
-      let p = allProduk.find(x => x[0] === prodId);
+      let produkId = document.getElementById('kkProdukId').value;
+      let p = allProduk.find(x => x[0] === produkId);
       if (!p) return;
       let hargaSetoran = parseFloat(document.getElementById('kkHargaSetoran').value) || 0;
       if (hargaSetoran <= 0) { showToast('Harga setoran wajib diisi!', true); return; }
