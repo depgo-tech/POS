@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <link id="favicon" rel="icon" href="https://z-cdn-media.chatglm.cn/files/dc6c73f6-138a-412e-a264-31156515be3c.png?auth_key=1884567107-72bf1055260449dc8458f2ae15aa7234-0-4942ebeed415e86d99ac303657546dae">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/escpos-printer@1.0.0/dist/escpos-printer.min.js"></script>
   <style>
     :root { --sidebar-bg: #000000; --main-bg: #f4f6f9; --card-bg: #ffffff; --text-dark: #111111; --text-gray: #666666; --border-color: #e0e0e0; --danger: #dc3545; --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; }
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', -apple-system, sans-serif; }
@@ -185,7 +186,6 @@
           <div class="pos-wrapper">
             <div class="product-area">
               <div class="pos-top-bar">
-                <!-- INPUT PENCARIAN SEKALIGUS ALAT SCAN -->
                 <input type="text" id="searchProduk" class="search-box" placeholder="Cari produk / Scan barcode (Enter)..." onkeydown="handleSearchKeydown(event)" oninput="debouncedRenderProduk()">
                 <button type="button" class="btn-scan" onclick="openScanner('pos')" title="Scan Barcode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg></button>
               </div>
@@ -207,7 +207,11 @@
                 </div>
 
                 <div class="pay-row"><span>Pilih Garansi</span><select id="masaGaransi"><option value="0">Tidak Bergaransi</option><option value="1">1 Bulan (Toko)</option><option value="3">3 Bulan (Toko)</option><option value="6">6 Bulan (Toko)</option><option value="12">12 Bulan (Distributor)</option><option value="24">24 Bulan (Ibox)</option></select></div>
+                
                 <div class="pay-row"><span>Metode Bayar</span><select id="metodeBayar"><option value="Cash">Cash</option><option value="QRIS">QRIS</option><option value="Transfer BCA">Transfer BCA</option><option value="Transfer Mandiri">Transfer Mandiri</option><option value="GoPay">GoPay</option><option value="DANA">DANA</option></select></div>
+                <div class="pay-row"><span>Split Payment?</span><input type="checkbox" id="useSplitPayment" onchange="toggleSplitPayment()"></div>
+                <div id="splitPaymentArea" class="hidden" style="margin-bottom:10px;"></div>
+
                 <div class="grand-total"><span>Total</span><span id="totalBayar">Rp 0</span></div>
                 <input type="text" id="namaPelanggan" class="input-cust" placeholder="Nama customer (opsional)" tabindex="2">
                 <button class="checkout-btn" id="btnCheckout" onclick="processCheckout()" disabled>Bayar [Enter]</button>
@@ -475,9 +479,10 @@
   <div class="modal-overlay" id="modalStruk">
     <div class="modal-content" style="max-width: 350px;">
       <div class="struk-area" id="strukArea"></div>
-      <div class="modal-actions" style="display:flex; gap:10px; margin-top:20px;">
+      <div class="modal-actions" style="display:flex; gap:10px; margin-top:20px; flex-direction: column;">
+        <button class="btn-save" onclick="printStrukEscPos()">Print Struk (Printer Thermal)</button>
+        <button class="btn-close-modal" onclick="window.print()">Print Biasa (Browser)</button>
         <button class="btn-close-modal" onclick="closeModal('modalStruk')">Tutup [Esc]</button>
-        <button class="btn-save" onclick="window.print()">Print Struk</button>
       </div>
     </div>
   </div>
@@ -507,6 +512,7 @@
     let modalFinContext = null;
     let modalPromptTextContext = null;
     let modalStokContext = null;
+    let splitPayments = [];
 
     var MENU = [
       { page:'dashboard', label:'Dashboard', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>', adminOnly:true },
@@ -1190,11 +1196,9 @@
         let code = document.getElementById('searchProduk').value.trim();
         if (!code) return;
         
-        // 1. Coba cari berdasarkan ID Produk / Barcode
         let match = allProduk.find(function(p) { return String(p[0]) === code; });
         if (match) {
           if (match[8] && match[8].length > 0) {
-            // Jika produk ini punya IMEI, tapi yang di-scan adalah ID produknya
             openImeiModal(match);
           } else {
             tambahKeranjang(match, null);
@@ -1205,7 +1209,6 @@
           return;
         }
         
-        // 2. Jika ID produk tidak ketemu, coba cari di dalam daftar IMEI semua produk
         for (let p of allProduk) {
           if (p[8] && p[8].length > 0) {
             let imeiObj = p[8].find(im => im.imei === code && im.status === 'tersedia');
@@ -1219,7 +1222,6 @@
           }
         }
         
-        // 3. Jika tidak ketemu sama sekali, biarkan fungsi search biasa jalan
         debouncedRenderProduk();
       } else {
         debouncedRenderProduk();
@@ -1370,6 +1372,59 @@
       hitungTotal();
     }
 
+    function toggleSplitPayment() {
+      let cb = document.getElementById('useSplitPayment');
+      let area = document.getElementById('splitPaymentArea');
+      if (cb.checked) {
+        area.classList.remove('hidden');
+        if (splitPayments.length === 0) {
+          splitPayments.push({ metode: 'Cash', jumlah: 0 });
+          renderSplitPayments();
+        }
+      } else {
+        area.classList.add('hidden');
+        splitPayments = [];
+      }
+      hitungTotal();
+    }
+
+    function addSplitPayment() {
+      splitPayments.push({ metode: 'Cash', jumlah: 0 });
+      renderSplitPayments();
+    }
+
+    function removeSplitPayment(idx) {
+      splitPayments.splice(idx, 1);
+      renderSplitPayments();
+      hitungTotal();
+    }
+
+    function updateSplitPayment(idx, field, value) {
+      if (field === 'jumlah') value = parseFloat(value) || 0;
+      splitPayments[idx][field] = value;
+      hitungTotal();
+    }
+
+    function renderSplitPayments() {
+      let html = '';
+      splitPayments.forEach((sp, idx) => {
+        html += `<div style="display:flex; gap:5px; margin-bottom:5px;">
+          <select onchange="updateSplitPayment(${idx}, 'metode', this.value)" style="flex:1; padding:6px; border:1px solid #ddd; border-radius:4px;">
+            <option value="Cash" ${sp.metode === 'Cash' ? 'selected' : ''}>Cash</option>
+            <option value="QRIS" ${sp.metode === 'QRIS' ? 'selected' : ''}>QRIS</option>
+            <option value="Transfer BCA" ${sp.metode === 'Transfer BCA' ? 'selected' : ''}>Transfer BCA</option>
+            <option value="Transfer Mandiri" ${sp.metode === 'Transfer Mandiri' ? 'selected' : ''}>Transfer Mandiri</option>
+            <option value="GoPay" ${sp.metode === 'GoPay' ? 'selected' : ''}>GoPay</option>
+            <option value="DANA" ${sp.metode === 'DANA' ? 'selected' : ''}>DANA</option>
+          </select>
+          <input type="number" value="${sp.jumlah}" oninput="updateSplitPayment(${idx}, 'jumlah', this.value)" placeholder="Rp" style="width:80px; padding:6px; border:1px solid #ddd; border-radius:4px; text-align:right;">
+          <button onclick="removeSplitPayment(${idx})" style="background:#dc3545; color:#fff; border:none; padding:6px 10px; border-radius:4px; cursor:pointer;">X</button>
+        </div>`;
+      });
+      html += `<button onclick="addSplitPayment()" style="background:#eee; border:1px solid #ddd; padding:5px 10px; border-radius:4px; cursor:pointer; font-size:12px; margin-top:5px;">+ Tambah Pembayaran</button>`;
+      document.getElementById('splitPaymentArea').innerHTML = html;
+    }
+
     function hitungTotal() {
       let s = keranjang.reduce(function (sum, i) { return sum + (i.harga * i.qty); }, 0);
       let dType = document.getElementById('diskonType').value;
@@ -1401,6 +1456,19 @@
       let metode = document.getElementById('metodeBayar').value;
       let calc = hitungTotal();
       let keranjangToSave = JSON.parse(JSON.stringify(keranjang));
+      
+      let splitPayData = [];
+      if (document.getElementById('useSplitPayment').checked && splitPayments.length > 0) {
+        let totalSplit = splitPayments.reduce((sum, sp) => sum + sp.jumlah, 0);
+        if (totalSplit < calc.total) {
+          showToast('Total split payment kurang dari total belanja!', true);
+          isCheckingOut = false;
+          btn.innerHTML = 'Bayar [Enter]';
+          btn.disabled = false;
+          return;
+        }
+        splitPayData = splitPayments;
+      }
 
       callApi('simpanTransaksi', { 
         keranjang: keranjangToSave, 
@@ -1410,7 +1478,8 @@
         ttNama: calc.ttNama,
         ttImei: calc.ttImei,
         ttNilai: calc.ttNilai,
-        masaGaransi: calc.masaGaransi
+        masaGaransi: calc.masaGaransi,
+        splitPayments: splitPayData
       }).then(function (res) {
         let tgl = new Date();
         let items = '';
@@ -1429,6 +1498,11 @@
         let footerText = (currentSettings[3]) ? currentSettings[3] : 'Terima kasih telah berbelanja!';
         let tglStr = tgl.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + tgl.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
+        let metodeBayarStr = metode;
+        if (splitPayData.length > 1) {
+          metodeBayarStr = splitPayData.map(p => `${p.metode} (${p.jumlah})`).join(' + ');
+        }
+
         let strukHtml = logoStrukHtml;
         strukHtml += '<h3>' + esc(currentSettings[0] || 'Toko') + '</h3>';
         strukHtml += '<p>' + esc(currentSettings[1] || '') + '</p>';
@@ -1445,7 +1519,7 @@
         strukHtml += '<div class="t-row"><span>Diskon (' + esc(calc.diskonStr) + ')</span><span>Rp ' + calc.diskonRp.toLocaleString('id-ID') + '</span></div>';
         strukHtml += ttHtml;
         strukHtml += '<div class="t-row t-bold"><span>Total</span><span>Rp ' + Number(res.total).toLocaleString('id-ID') + '</span></div>';
-        strukHtml += '<div class="t-row"><span>Bayar</span><span>' + esc(metode) + '</span></div>';
+        strukHtml += '<div class="t-row"><span>Bayar</span><span>' + esc(metodeBayarStr) + '</span></div>';
         strukHtml += '</div><div class="struk-divider"></div>';
         strukHtml += '<p style="margin-top:10px; font-weight:bold;">' + esc(footerText) + '</p>';
 
@@ -1469,6 +1543,10 @@
         toggleTukarTambah(); 
         document.getElementById('useTukarTambah').checked = false;
         document.getElementById('masaGaransi').value = '0';
+        if (document.getElementById('useSplitPayment').checked) {
+          document.getElementById('useSplitPayment').checked = false;
+          toggleSplitPayment();
+        }
         isCheckingOut = false;
         btn.innerHTML = 'Bayar [Enter]';
         renderProduk(); renderKeranjang();
@@ -1642,7 +1720,6 @@
     function routeScanResult(code) {
       closeModal('modalScanner');
       if (scannerTargetContext === 'pos') {
-        // Cari apakah code ini adalah ID produk / barcode
         let match = allProduk.find(function(p) { return String(p[0]) === code; });
         if (match) { 
           if (match[8] && match[8].length > 0) {
@@ -1652,7 +1729,6 @@
             showToast('Produk "' + match[1] + '" ditambahkan ke keranjang!'); 
           }
         } else {
-          // Jika bukan ID produk, coba cari di IMEI
           let foundImei = null;
           let foundProd = null;
           for (let p of allProduk) {
@@ -1678,6 +1754,136 @@
         document.getElementById('produkBarcode').value = code; showToast('Barcode berhasil di-scan!');
       }
       scannerTargetContext = null;
+    }
+
+    // FUNGSI PRINT THERMAL ESCPOS
+    function printStrukEscPos() {
+      let strukArea = document.getElementById('strukArea');
+      if (!strukArea) return;
+
+      let lines = [];
+      lines.push({ type: 'text', content: currentSettings[0] || 'Toko', align: 'center', bold: true, size: 2 });
+      if (currentSettings[1]) lines.push({ type: 'text', content: currentSettings[1], align: 'center' });
+      if (currentSettings[2]) lines.push({ type: 'text', content: currentSettings[2], align: 'center' });
+      lines.push({ type: 'separator' });
+
+      let infoItems = strukArea.querySelectorAll('div[style*="display:flex; justify-content:space-between;"]');
+      infoItems.forEach(item => {
+        let spans = item.querySelectorAll('span');
+        if (spans.length === 2) {
+          lines.push({ type: 'text', content: spans[0].innerText + ': ' + spans[1].innerText, align: 'left' });
+        }
+      });
+      lines.push({ type: 'separator' });
+
+      let itemRows = strukArea.querySelectorAll('.struk-item');
+      itemRows.forEach(row => {
+        let spans = row.querySelectorAll('span');
+        if (spans.length === 2) {
+          lines.push({ type: 'text', content: spans[0].innerText, align: 'left' });
+          lines.push({ type: 'text', content: spans[1].innerText, align: 'right' });
+        }
+      });
+      lines.push({ type: 'separator' });
+
+      let totalRows = strukArea.querySelectorAll('.struk-total .t-row');
+      totalRows.forEach(row => {
+        let spans = row.querySelectorAll('span');
+        if (spans.length === 2) {
+          let isBold = row.classList.contains('t-bold');
+          lines.push({ type: 'text', content: spans[0].innerText + ': ' + spans[1].innerText, align: isBold ? 'center' : 'left', bold: isBold, size: isBold ? 2 : 1 });
+        }
+      });
+      lines.push({ type: 'separator' });
+
+      let footer = strukArea.querySelector('p[style*="margin-top:10px; font-weight:bold;"]');
+      if (footer) {
+        lines.push({ type: 'text', content: footer.innerText, align: 'center', bold: true });
+      }
+
+      // Konversi ke format ESC/POS
+      let escposData = lines.map(line => {
+        if (line.type === 'separator') return '\n------------------------------\n';
+        let text = line.content || '';
+        if (line.align === 'center') text = `\x1B\x61\x01${text}\x1B\x61\x00`;
+        if (line.bold) text = `\x1B\x45\x01${text}\x1B\x45\x00`;
+        if (line.size === 2) text = `\x1D\x21\x11${text}\x1D\x21\x00`;
+        return text + '\n';
+      }).join('');
+
+      // Coba kirim ke printer via Web USB (paling umum untuk iPad dengan adapter)
+      if (navigator.usb) {
+        navigator.usb.requestDevice({ filters: [] })
+          .then(device => {
+            return device.open()
+              .then(() => device.selectConfiguration(1))
+              .then(() => device.claimInterface(0))
+              .then(() => {
+                let encoder = new TextEncoder();
+                let data = encoder.encode(escposData);
+                return device.transferOut(1, data);
+              })
+              .then(() => {
+                showToast('Struk berhasil dikirim ke printer!');
+                return device.close();
+              });
+          })
+          .catch(error => {
+            console.error('Print Error:', error);
+            showToast('Gagal print via USB. Mencoba Web Bluetooth...', true);
+            printViaBluetooth(escposData);
+          });
+      } else if (navigator.bluetooth) {
+        printViaBluetooth(escposData);
+      } else {
+        showToast('Browser tidak mendukung koneksi printer langsung. Gunakan print browser biasa.', true);
+        window.print();
+      }
+    }
+
+    function printViaBluetooth(data) {
+      if (!navigator.bluetooth) {
+        showToast('Web Bluetooth tidak didukung di browser ini.', true);
+        window.print();
+        return;
+      }
+      
+      navigator.bluetooth.requestDevice({
+        filters: [{ services: ['000018f0-0000-1000-8000-00805f9b34fb'] }] // Service ID umum untuk printer thermal BLE
+      })
+      .then(device => {
+        return device.gatt.connect();
+      })
+      .then(server => {
+        return server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
+      })
+      .then(service => {
+        return service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb'); // Characteristic untuk write data
+      })
+      .then(characteristic => {
+        let encoder = new TextEncoder();
+        let chunkSize = 180; // Maksimal bytes per write untuk BLE
+        let dataBytes = encoder.encode(data);
+        
+        let sendChunks = function(offset) {
+          let chunk = dataBytes.slice(offset, offset + chunkSize);
+          return characteristic.writeValue(chunk).then(() => {
+            if (offset + chunkSize < dataBytes.length) {
+              return sendChunks(offset + chunkSize);
+            }
+          });
+        };
+        
+        return sendChunks(0);
+      })
+      .then(() => {
+        showToast('Struk berhasil dikirim ke printer via Bluetooth!');
+      })
+      .catch(error => {
+        console.error('Bluetooth Print Error:', error);
+        showToast('Gagal print via Bluetooth. Mencoba print browser biasa.', true);
+        window.print();
+      });
     }
   </script>
 </body>
