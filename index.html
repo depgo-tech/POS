@@ -302,6 +302,26 @@
           </div>
         </div>
 
+        <div id="view-printer" class="view" style="padding: 25px;">
+          <div class="dashboard-header"><div><h2>Pengaturan Printer</h2><p>Hubungkan dan uji printer thermal Anda (USB atau Bluetooth).</p></div></div>
+          <div class="settings-card">
+            <div class="card-box">
+              <h3 style="margin-bottom: 15px; font-size: 16px;">Koneksi USB</h3>
+              <button class="btn-save" onclick="connectUsbPrinter()">Cari & Hubungkan Printer USB</button>
+              <p id="usbStatus" style="margin-top:10px; font-size:13px; color:#666;">Status: Belum terhubung</p>
+            </div>
+            <div class="card-box">
+              <h3 style="margin-bottom: 15px; font-size: 16px;">Koneksi Bluetooth</h3>
+              <button class="btn-save" onclick="connectBlePrinter()">Cari & Hubungkan Printer Bluetooth</button>
+              <p id="bleStatus" style="margin-top:10px; font-size:13px; color:#666;">Status: Belum terhubung</p>
+            </div>
+            <div class="card-box">
+              <h3 style="margin-bottom: 15px; font-size: 16px;">Uji Cetak</h3>
+              <button class="btn-add" onclick="testPrint()">Print Test Struk</button>
+            </div>
+          </div>
+        </div>
+
         <div id="view-users" class="view" style="padding: 25px;">
           <div class="dashboard-header"><div><h2>Manajemen User</h2><p>Tambah kasir atau kelola akses toko.</p></div></div>
           <div class="card-box">
@@ -529,6 +549,8 @@
     let modalPromptTextContext = null;
     let modalStokContext = null;
     let splitPayments = [];
+    let usbDevice = null;
+    let bleChar = null;
 
     var MENU = [
       { page:'dashboard', label:'Dashboard', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>', adminOnly:true },
@@ -538,6 +560,7 @@
       { page:'riwayat', label:'Riwayat Trx', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>' },
       { page:'garansi', label:'Garansi', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>' },
       { page:'konsinyasi', label:'Konsinyasi', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>', adminOnly:true },
+      { page:'printer', label:'Pengaturan Printer', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>', adminOnly:true },
       { page:'users', label:'Manajemen User', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>', adminOnly:true },
       { page:'pengaturan', label:'Pengaturan', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>', adminOnly:true }
     ];
@@ -1779,7 +1802,47 @@
       scannerTargetContext = null;
     }
 
-    // FUNGSI PRINT THERMAL ESCPOS VIA BROWSER (USB/BLUETOOTH)
+    // FUNGSI PRINTER
+    function connectUsbPrinter() {
+      if (!navigator.usb) { showToast('Browser tidak mendukung Web USB', true); return; }
+      navigator.usb.requestDevice({ filters: [] })
+        .then(device => {
+          return device.open()
+            .then(() => device.selectConfiguration(1))
+            .then(() => device.claimInterface(0))
+            .then(() => {
+              usbDevice = device;
+              document.getElementById('usbStatus').innerText = 'Status: Terhubung (' + (device.productName || device.manufacturerName || 'Device') + ')';
+              showToast('Printer USB berhasil dihubungkan!');
+            });
+        })
+        .catch(err => {
+          document.getElementById('usbStatus').innerText = 'Status: Gagal - ' + err.message;
+        });
+    }
+
+    function connectBlePrinter() {
+      if (!navigator.bluetooth) { showToast('Browser tidak mendukung Web Bluetooth', true); return; }
+      navigator.bluetooth.requestDevice({ filters: [{ services: ['000018f0-0000-1000-8000-00805f9b34fb'] }] })
+        .then(device => device.gatt.connect())
+        .then(server => server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb'))
+        .then(service => service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb'))
+        .then(char => {
+          bleChar = char;
+          document.getElementById('bleStatus').innerText = 'Status: Terhubung ke Printer Thermal';
+          showToast('Printer Bluetooth berhasil dihubungkan!');
+        })
+        .catch(err => {
+          document.getElementById('bleStatus').innerText = 'Status: Gagal - ' + err.message;
+        });
+    }
+
+    function testPrint() {
+      let encoder = new TextEncoder();
+      let data = encoder.encode('\x1B\x40\x1B\x61\x01Test Print Benk Cell\n\n\n\n\x1D\x56\x42\x00');
+      sendToPrinter(data).then(() => showToast('Test print berhasil dikirim!')).catch(err => showToast('Gagal test print: ' + err.message, true));
+    }
+
     function printStrukEscPos() {
       let strukArea = document.getElementById('strukArea');
       if (!strukArea) return;
@@ -1850,60 +1913,23 @@
         offset += chunk.length;
       });
 
-      // Try Web USB
-      if (navigator.usb) {
-        navigator.usb.requestDevice({ filters: [] })
-          .then(device => {
-            return device.open()
-              .then(() => device.selectConfiguration(1))
-              .then(() => device.claimInterface(0))
-              .then(() => device.transferOut(1, combinedData))
-              .then(() => device.close())
-              .then(() => showToast('Struk berhasil dikirim ke printer USB!'));
-          })
-          .catch(err => {
-            if (err.name === 'NotFoundError') {
-              showToast('Tidak ada printer USB dipilih. Mencoba Bluetooth...', true);
-              printViaBluetooth(combinedData);
-            } else {
-              showToast('Gagal via USB: ' + err.message, true);
-              printViaBluetooth(combinedData);
-            }
-          });
-      } else if (navigator.bluetooth) {
-        printViaBluetooth(combinedData);
-      } else {
-        showToast('Browser tidak mendukung USB/BLE. Gunakan Chrome/Edge.', true);
-      }
+      sendToPrinter(combinedData).then(() => showToast('Struk berhasil dikirim!')).catch(err => showToast('Gagal print: ' + err.message, true));
     }
 
-    function printViaBluetooth(data) {
-      if (!navigator.bluetooth) {
-        showToast('Browser tidak mendukung Web Bluetooth.', true);
-        return;
-      }
-      navigator.bluetooth.requestDevice({
-        filters: [{ services: ['000018f0-0000-1000-8000-00805f9b34fb'] }]
-      })
-      .then(device => device.gatt.connect())
-      .then(server => server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb'))
-      .then(service => service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb'))
-      .then(characteristic => {
+    async function sendToPrinter(data) {
+      if (usbDevice) {
+        await usbDevice.transferOut(1, data);
+      } else if (bleChar) {
         let chunkSize = 180;
         let offset = 0;
-        let sendChunks = function() {
+        while (offset < data.length) {
           let chunk = data.slice(offset, offset + chunkSize);
-          return characteristic.writeValue(chunk).then(() => {
-            offset += chunkSize;
-            if (offset < data.length) return sendChunks();
-          });
-        };
-        return sendChunks();
-      })
-      .then(() => showToast('Struk berhasil dikirim via Bluetooth!'))
-      .catch(err => {
-        showToast('Gagal via Bluetooth: ' + err.message, true);
-      });
+          await bleChar.writeValue(chunk);
+          offset += chunkSize;
+        }
+      } else {
+        throw new Error('Belum ada printer terhubung. Hubungkan di menu Pengaturan Printer.');
+      }
     }
   </script>
 </body>
