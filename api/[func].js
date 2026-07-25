@@ -23,8 +23,8 @@ module.exports = async (req, res) => {
   try {
     if (func === 'getPengaturan') {
       const { data } = await supabase.from('pengaturan').select('*').eq('id', 1).single();
-      if (data) return res.json([data.nama_toko, data.alamat, data.telp, data.footer, data.logo_toko, data.logo_struk]);
-      return res.json(['Benk cell', '', '', 'Terima kasih telah berbelanja!', '', '']);
+      if (data) return res.json([data.nama_toko, data.alamat, data.telp, data.footer, data.logo_toko, data.logo_struk, data.qris_img, data.rek_bca, data.rek_mandiri, data.rek_gopay, data.rek_dana]);
+      return res.json(['Benk cell', '', '', 'Terima kasih telah berbelanja!', '', '', '', '', '', '', '']);
     }
 
     if (func === 'getUsernamesForLogin') {
@@ -76,7 +76,7 @@ module.exports = async (req, res) => {
     }
 
     if (func === 'simpanTransaksi') {
-      const { keranjang, pelanggan, diskonStr, metode, ttNama, ttImei, ttNilai, masaGaransi } = body;
+      const { keranjang, pelanggan, diskonStr, metode, ttNama, ttImei, ttNilai, masaGaransi, splitPayments } = body;
       
       const itemIds = keranjang.map(i => i.id);
       const { data: prods } = await supabase.from('produk').select('*').in('id', itemIds);
@@ -112,9 +112,15 @@ module.exports = async (req, res) => {
       let tgl = new Date().toISOString();
       let idTrx = 'INV' + tgl.replace(/[-:T]/g, '').split('.')[0];
 
+      // Gabungkan metode bayar jika split
+      let metodeBayarFinal = metode;
+      if (splitPayments && splitPayments.length > 1) {
+        metodeBayarFinal = splitPayments.map(p => `${p.metode} (${p.jumlah})`).join(' + ');
+      }
+
       await supabase.from('transaksi').insert([{
         id: idTrx, tgl: tgl, pelanggan: pelanggan, items: itemsArr.join(', '), 
-        total: totalAkhir, metode: metode, diskon: diskonStr,
+        total: totalAkhir, metode: metodeBayarFinal, diskon: diskonStr,
         tt_nama: ttNama || null, tt_imei: ttImei || null, tt_nilai: nilaiTukar
       }]);
 
@@ -258,7 +264,6 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: "Data tidak ditemukan" });
     }
 
-    // --- FITUR STOK MASUK, KELUAR, OPNAME ---
     if (func === 'getStokLog') {
       const { data } = await supabase.from('stok_log').select('*').order('tgl', { ascending: false }).limit(100);
       return res.json(data || []);
@@ -361,7 +366,6 @@ module.exports = async (req, res) => {
       return res.json("Sukses");
     }
 
-    // --- FUNGSI LAMA ---
     if (func === 'getRiwayatTransaksi') {
       const { startDate, endDate } = body;
       let now = new Date();
@@ -383,7 +387,7 @@ module.exports = async (req, res) => {
       const { data: prodData } = await supabase.from('produk').select('*');
       let penjualanPeriode = 0, trxPeriode = 0, totalStok = 0, lowStok = [];
       let chartLabels = [], chartData = [], chartDateMap = {};
-      for (let i = 6; i >= 0; i++) {
+      for (let i = 6; i >= 0; i--) {
         let d = new Date(); d.setDate(d.getDate() - i);
         let key = d.toISOString().split('T')[0];
         chartLabels.push(d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' }));
@@ -443,7 +447,20 @@ module.exports = async (req, res) => {
 
     if (func === 'savePengaturan') {
       const data = body;
-      await supabase.from('pengaturan').upsert([{ id: 1, nama_toko: data.nama, alamat: data.alamat, telp: data.telp, footer: data.footer, logo_toko: data.logoToko, logo_struk: data.logoStruk }]);
+      await supabase.from('pengaturan').upsert([{ 
+        id: 1, 
+        nama_toko: data.nama, 
+        alamat: data.alamat, 
+        telp: data.telp, 
+        footer: data.footer, 
+        logo_toko: data.logoToko, 
+        logo_struk: data.logoStruk,
+        qris_img: data.qrisImg,
+        rek_bca: data.rekBca,
+        rek_mandiri: data.rekMandiri,
+        rek_gopay: data.rekGopay,
+        rek_dana: data.rekDana
+      }]);
       return res.json("Sukses");
     }
 
