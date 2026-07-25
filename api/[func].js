@@ -112,7 +112,6 @@ module.exports = async (req, res) => {
       let tgl = new Date().toISOString();
       let idTrx = 'INV' + tgl.replace(/[-:T]/g, '').split('.')[0];
 
-      // Gabungkan metode bayar jika split
       let metodeBayarFinal = metode;
       if (splitPayments && splitPayments.length > 1) {
         metodeBayarFinal = splitPayments.map(p => `${p.metode} (${p.jumlah})`).join(' + ');
@@ -129,19 +128,29 @@ module.exports = async (req, res) => {
 
       for (let item of keranjang) {
         let prod = prodMap[item.id];
+        
         if (item.imei) {
           let newImeis = (prod.imeis || []).filter(im => im.imei !== item.imei);
           updatePromises.push(supabase.from('produk').update({ imeis: newImeis, stok: newImeis.length }).eq('id', item.id));
-          
-          updatePromises.push(supabase.from('garansi').insert([{
-            id: 'GR' + Date.now() + Math.floor(Math.random() * 1000),
-            no_invoice: idTrx, tgl: tgl, imei: item.imei,
-            nama_produk: item.nama + ' ' + item.varian, pelanggan: pelanggan,
-            telp: '', masa_garansi: Number(masaGaransi) || 0
-          }]));
         } else {
           let newStok = Number(prod.stok) - Number(item.qty);
           updatePromises.push(supabase.from('produk').update({ stok: newStok }).eq('id', item.id));
+        }
+
+        // PERBAIKAN GARANSI: Catat garansi untuk SEMUA ITEM jika masa garansi > 0
+        if (Number(masaGaransi) > 0) {
+          let warrantyId = 'GR' + Date.now() + Math.floor(Math.random() * 1000) + Math.floor(Math.random()*1000);
+          let namaProduk = item.nama + ' ' + (item.varian || '') + (item.storage ? ' (' + item.storage + ')' : '');
+          updatePromises.push(supabase.from('garansi').insert([{
+            id: warrantyId,
+            no_invoice: idTrx, 
+            tgl: tgl, 
+            imei: item.imei || '-', // Pakai '-' kalau tidak ada IMEI
+            nama_produk: namaProduk, 
+            pelanggan: pelanggan,
+            telp: '',
+            masa_garansi: Number(masaGaransi)
+          }]));
         }
 
         if (prod.is_konsinyasi && prod.mitra_id) {
