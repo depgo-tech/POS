@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <link id="favicon" rel="icon" href="https://z-cdn-media.chatglm.cn/files/dc6c73f6-138a-412e-a264-31156515be3c.png?auth_key=1884567107-72bf1055260449dc8458f2ae15aa7234-0-4942ebeed415e86d99ac303657546dae">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/escpos-printer@1.0.0/dist/escpos-printer.min.js"></script>
   <style>
     :root { --sidebar-bg: #000000; --main-bg: #f4f6f9; --card-bg: #ffffff; --text-dark: #111111; --text-gray: #666666; --border-color: #e0e0e0; --danger: #dc3545; --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; }
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', -apple-system, sans-serif; }
@@ -835,10 +834,12 @@
         closeModal('modalStok');
         refreshProdukFromServer();
         loadStokLog();
+        btn.disabled = false;
+        btn.innerHTML = 'Proses';
       }).catch(function(err) { 
         showToast('Gagal: ' + (err && err.message ? err.message : ''), true); 
         btn.disabled = false;
-        btn.innerText = 'Proses';
+        btn.innerHTML = 'Proses';
       });
     }
 
@@ -878,10 +879,12 @@
         closeModal('modalOpname');
         refreshProdukFromServer();
         loadStokLog();
+        btn.disabled = false;
+        btn.innerHTML = 'Proses Opname';
       }).catch(function(err) { 
         showToast('Gagal: ' + (err && err.message ? err.message : ''), true); 
         btn.disabled = false;
-        btn.innerText = 'Proses Opname';
+        btn.innerHTML = 'Proses Opname';
       });
     }
 
@@ -948,10 +951,12 @@
         showToast('Transaksi berhasil dicatat!');
         closeModal('modalFinansial');
         loadKonsinyasi();
+        btn.disabled = false;
+        btn.innerHTML = 'Proses';
       }).catch(function(err) { 
         showToast('Gagal: ' + (err && err.message ? err.message : ''), true); 
         btn.disabled = false;
-        btn.innerText = 'Proses';
+        btn.innerHTML = 'Proses';
       });
     }
 
@@ -1041,10 +1046,12 @@
         closeModal('modalKonsinyasiKeluar');
         refreshProdukFromServer();
         loadKonsinyasi();
+        btn.disabled = false;
+        btn.innerHTML = 'Kirim & Catat Piutang';
       }).catch(function(err) { 
         showToast('Gagal: ' + (err && err.message ? err.message : ''), true); 
         btn.disabled = false;
-        btn.innerText = 'Kirim & Catat Piutang';
+        btn.innerHTML = 'Kirim & Catat Piutang';
       });
     }
 
@@ -1601,10 +1608,12 @@
       callApi('resetUserPassword', { id: modalPromptTextContext.id, newPassword: val }).then(function(res) { 
         showToast('Password berhasil direset!'); 
         closeModal('modalPromptText');
+        btn.disabled = false;
+        btn.innerHTML = 'Simpan';
       }).catch(function(err) { 
         showToast('Gagal reset password: ' + (err && err.message ? err.message : ''), true); 
         btn.disabled = false;
-        btn.innerText = 'Simpan';
+        btn.innerHTML = 'Simpan';
       });
     }
 
