@@ -817,10 +817,11 @@
       }).catch(function(err) { t.innerHTML = '<tr><td colspan="7" style="text-align:center; color:red; padding:20px;">Error: ' + esc(err.message) + '</td></tr>'; });
     }
 
-    function openStokModal(type) {
+        function openStokModal(type) {
       modalStokContext = type;
       let prodSelect = document.getElementById('stokProdukId');
-      prodSelect.innerHTML = allProduk.map(p => `<option value="${p[0]}">${esc(p[1])} ${esc(p[2])} (Stok: ${p[5]})</option>`).join('');
+      // PERBAIKAN: Menambahkan p[3] (Storage) ke dalam teks dropdown
+      prodSelect.innerHTML = allProduk.map(p => `<option value="${p[0]}">${esc(p[1])} ${esc(p[2])} ${p[3] ? esc(p[3]) : ''} (Stok: ${p[5]})</option>`).join('');
       
       document.getElementById('modalStokTitle').innerText = type === 'masuk' ? 'Stok Masuk (Restock)' : 'Stok Keluar (Rusak/Hilang)';
       document.getElementById('stokJumlah').value = 1;
@@ -1006,10 +1007,11 @@
       });
     }
 
-    function openKonsinyasiKeluarModal() {
+        function openKonsinyasiKeluarModal() {
       keranjangKonsinyasi = [];
       document.getElementById('kkMitraId').innerHTML = allMitra.map(m => `<option value="${m.id}">${esc(m.nama)}</option>`).join('');
-      document.getElementById('kkProdukId').innerHTML = allProduk.map(p => `<option value="${p[0]}">${esc(p[1])} ${esc(p[2])}</option>`).join('');
+      // PERBAIKAN: Menambahkan p[3] (Storage) ke dalam teks dropdown
+      document.getElementById('kkProdukId').innerHTML = allProduk.map(p => `<option value="${p[0]}">${esc(p[1])} ${esc(p[2])} ${p[3] ? esc(p[3]) : ''}</option>`).join('');
       document.getElementById('kkQty').value = 1;
       document.getElementById('kkHargaSetoran').value = '';
       updateKonsinyasiImeiOptions();
@@ -1340,8 +1342,13 @@
       document.getElementById('modalVariant').style.display = 'flex';
     }
 
-    function openImeiModal(variantData) {
-      document.getElementById('modalImeiTitle').innerText = 'Pilih IMEI ' + variantData[1];
+        function openImeiModal(variantData) {
+      // PERBAIKAN: Menggabungkan Nama, Varian, dan Storage di Judul
+      let titleText = 'Pilih IMEI ' + variantData[1];
+      if (variantData[2]) titleText += ' ' + variantData[2];
+      if (variantData[3]) titleText += ' ' + variantData[3];
+      document.getElementById('modalImeiTitle').innerText = titleText;
+      
       let list = document.getElementById('imeiList');
       list.innerHTML = '';
       let imeis = variantData[8].filter(im => im.status === 'tersedia');
