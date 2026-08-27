@@ -364,7 +364,8 @@
       <div class="form-group"><label>Varian / Warna</label><input type="text" id="produkVarian"></div>
       <div class="form-group"><label>Storage (Opsional)</label><input type="text" id="produkStorage" placeholder="cth: 128GB"></div>
       <div class="form-group"><label>Kategori</label><select id="produkKategori"><option value="Handphone">Handphone</option><option value="Tablet">Tablet</option><option value="Aksesoris">Aksesoris</option><option value="Lainnya">Lainnya</option></select></div>
-      <div class="form-group"><label>Harga (Rp)</label><input type="number" id="produkHarga"></div>
+      <div class="form-group"><label>Harga Jual (Rp)</label><input type="number" id="produkHarga"></div>
+      <div class="form-group"><label>HPP / Harga Modal (Rp)</label><input type="number" id="produkHpp" placeholder="0"></div>
       
       <div class="kons-box">
         <div class="pay-row" style="margin-bottom: 5px;"><span>Produk Konsinyasi (Titip Jual)?</span><input type="checkbox" id="produkIsKonsinyasi" onchange="toggleKonsinyasiForm()"></div>
@@ -1146,7 +1147,7 @@
       tbody.innerHTML = rows.join('');
     }
 
-    function openProdukModal(id) {
+        function openProdukModal(id) {
       if (currentUser.role !== 'admin') return;
       document.getElementById('produkId').value = '';
       document.getElementById('produkBarcode').value = '';
@@ -1155,6 +1156,7 @@
       document.getElementById('produkVarian').value = '';
       document.getElementById('produkStorage').value = '';
       document.getElementById('produkHarga').value = '';
+      document.getElementById('produkHpp').value = ''; /* TAMBAHAN HPP */
       document.getElementById('produkFotoFile').value = '';
       document.getElementById('previewProdukFoto').style.display = 'none';
       document.getElementById('produkIsKonsinyasi').checked = false;
@@ -1178,6 +1180,7 @@
           document.getElementById('produkVarian').value = p[2];
           document.getElementById('produkStorage').value = p[3];
           document.getElementById('produkHarga').value = p[4];
+          document.getElementById('produkHpp').value = p[12] || ''; /* TAMBAHAN HPP */
           document.getElementById('produkKategori').value = p[6];
           if (p[7]) { document.getElementById('previewProdukFoto').src = p[7]; document.getElementById('previewProdukFoto').style.display = 'block'; }
           if (p[9]) {
@@ -1198,7 +1201,7 @@
       else area.classList.add('hidden');
     }
 
-    function saveProduk() {
+        function saveProduk() {
       let btn = document.getElementById('btnSaveProduk');
       let barcodeInput = document.getElementById('produkBarcode').value.trim();
       let data = {
@@ -1208,6 +1211,7 @@
         storage: document.getElementById('produkStorage').value.trim(),
         kategori: document.getElementById('produkKategori').value,
         harga: document.getElementById('produkHarga').value,
+        hpp: document.getElementById('produkHpp').value || 0, /* TAMBAHAN HPP */
         foto: getBase64Image('previewProdukFoto'),
         isKonsinyasi: document.getElementById('produkIsKonsinyasi').checked,
         mitraId: document.getElementById('produkMitraId').value,
@@ -1229,7 +1233,6 @@
         btn.innerText = 'Simpan Produk'; btn.disabled = false;
       });
     }
-
     function renderKategori() {
       let c = document.getElementById('catContainer');
       c.innerHTML = '';
