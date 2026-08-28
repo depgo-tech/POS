@@ -418,7 +418,7 @@ module.exports = async (req, res) => {
         totalStok += stok;
         if (stok <= 5) lowStok.push({ id: p.id, nama: p.nama, varian: p.varian, stok: stok });
       });
-      return res.json({ penjualanPeriode, trxPeriode,       return res.json({ penjualanPeriode, trxPeriode, hppTotal: hppTotalPeriode, totalTrx: trxData ? trxData.length : 0, totalProduk: prodData ? prodData.length : 0, totalStok, lowStok, chartLabels, chartData });: trxData ? trxData.length : 0, totalProduk: prodData ? prodData.length : 0, totalStok, lowStok, chartLabels, chartData });
+      return res.json({ penjualanPeriode, trxPeriode, hppTotal: hppTotalPeriode, totalTrx: trxData ? trxData.length : 0, totalProduk: prodData ? prodData.length : 0, totalStok, lowStok, chartLabels, chartData });: trxData ? trxData.length : 0, totalProduk: prodData ? prodData.length : 0, totalStok, lowStok, chartLabels, chartData });
     }
 
     if (func === 'getUsers') {
