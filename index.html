@@ -171,8 +171,10 @@
               <button class="btn-action" style="align-self:flex-end; height:42px;" onclick="resetDashFilterToday()">Hari Ini</button>
             </div>
           </div>
-          <div class="stats-grid">
+                    <div class="stats-grid">
             <div class="stat-card"><div class="stat-title">Penjualan (Periode Ini)</div><div class="stat-value" id="statPeriode">Rp 0</div></div>
+            <div class="stat-card"><div class="stat-title">Total Modal (HPP)</div><div class="stat-value" id="statHpp" style="color:#dc3545;">Rp 0</div></div>
+            <div class="stat-card"><div class="stat-title">Estimasi Laba Kotor</div><div class="stat-value" id="statLaba" style="color:#1a3a0a;">Rp 0</div></div>
             <div class="stat-card"><div class="stat-title">Transaksi (Periode Ini)</div><div class="stat-value" id="statTrxPeriode">0</div></div>
             <div class="stat-card"><div class="stat-title">Total Transaksi (Sepanjang Waktu)</div><div class="stat-value" id="statTrx">0</div></div>
             <div class="stat-card"><div class="stat-title">Total Produk</div><div class="stat-value" id="statProduk">0</div></div>
@@ -724,6 +726,8 @@
       let endDate = document.getElementById('dashDateEnd').value;
       callApi('getDashboardData', { startDate: startDate, endDate: endDate }).then(function (d) {
         document.getElementById('statPeriode').innerText = 'Rp ' + Number(d.penjualanPeriode).toLocaleString('id-ID');
+        document.getElementById('statHpp').innerText = 'Rp ' + Number(d.hppTotal || 0).toLocaleString('id-ID');
+        document.getElementById('statLaba').innerText = 'Rp ' + Number((d.penjualanPeriode || 0) - (d.hppTotal || 0)).toLocaleString('id-ID');
         document.getElementById('statTrxPeriode').innerText = d.trxPeriode;
         document.getElementById('statTrx').innerText = d.totalTrx;
         document.getElementById('statProduk').innerText = d.totalProduk;
@@ -1511,6 +1515,14 @@
       let calc = hitungTotal();
       let keranjangToSave = JSON.parse(JSON.stringify(keranjang));
       
+      let totalHpp = 0; // TAMBAHAN HPP
+      keranjangToSave.forEach(function(item) {
+          let prod = allProduk.find(p => p[0] === item.id);
+          if (prod && prod[12]) {
+              totalHpp += Number(prod[12]) * item.qty;
+          }
+      });
+
       let splitPayData = [];
       if (document.getElementById('useSplitPayment').checked && splitPayments.length > 0) {
         let totalSplit = splitPayments.reduce((sum, sp) => sum + sp.jumlah, 0);
@@ -1533,9 +1545,9 @@
         ttImei: calc.ttImei,
         ttNilai: calc.ttNilai,
         masaGaransi: calc.masaGaransi,
-        splitPayments: splitPayData
-      }).then(function (res) {
-        let tgl = new Date();
+        splitPayments: splitPayData,
+        hppTotal: totalHpp // TAMBAHAN HPP
+      }).then(function (res) {        let tgl = new Date();
         let items = '';
         keranjangToSave.forEach(function (i) {
           let storageTxt = i.storage ? ' (' + i.storage + ')' : '';
