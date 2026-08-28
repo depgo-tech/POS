@@ -1499,9 +1499,17 @@
       btn.innerHTML = '<div class="spinner-white"></div> Memproses...';
       let pel = document.getElementById('namaPelanggan').value.trim() || 'Umum';
       let metode = document.getElementById('metodeBayar').value;
-      let calc = hitungTotal();
+      
       let keranjangToSave = JSON.parse(JSON.stringify(keranjang));
       
+      let totalHpp = 0; // TAMBAHAN HPP
+      keranjangToSave.forEach(function(item) {
+          let prod = allProduk.find(p => p[0] === item.id);
+          if (prod && prod[12]) {
+              totalHpp += Number(prod[12]) * item.qty;
+          }
+      });
+
       let splitPayData = [];
       if (document.getElementById('useSplitPayment').checked && splitPayments.length > 0) {
         let totalSplit = splitPayments.reduce((sum, sp) => sum + sp.jumlah, 0);
@@ -1515,7 +1523,7 @@
         splitPayData = splitPayments;
       }
 
-      callApi('simpanTransaksi', { 
+            callApi('simpanTransaksi', { 
         keranjang: keranjangToSave, 
         pelanggan: pel, 
         diskonStr: calc.diskonStr, 
@@ -1524,7 +1532,8 @@
         ttImei: calc.ttImei,
         ttNilai: calc.ttNilai,
         masaGaransi: calc.masaGaransi,
-        splitPayments: splitPayData
+        splitPayments: splitPayData,
+        hppTotal: totalHpp // TAMBAHAN HPP
       }).then(function (res) {
         let tgl = new Date();
         let items = '';
