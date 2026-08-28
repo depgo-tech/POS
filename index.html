@@ -744,7 +744,7 @@
 
     function resetDashFilterToday() { let todayStr = new Date().toISOString().split('T')[0]; document.getElementById('dashDateStart').value = todayStr; document.getElementById('dashDateEnd').value = todayStr; loadDashboard(); }
 
-  function loadfunction cetakUlangStruk(i) {
+  function cetakUlangStruk(i) {
   const trx = (window.riwayatData || [])[i];
   if (!trx) { alert('Data transaksi tidak ditemukan. Coba muat ulang halaman lalu buka menu Riwayat lagi.'); return; }
 
