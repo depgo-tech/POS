@@ -387,7 +387,7 @@ module.exports = async (req, res) => {
       return res.json(mapped);
     }
 
-        if (func === 'getDashboardData') {
+           if (func === 'getDashboardData') {
       const { startDate, endDate } = body;
       let now = new Date();
       let todayStr = now.toISOString().split('T')[0];
