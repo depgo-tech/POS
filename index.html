@@ -261,7 +261,7 @@
           </div>
           <div class="data-table table-scroll">
             <table style="width: 100%; border-collapse: collapse; min-width: 640px;">
-              <thead><tr><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Invoice</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Tanggal</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Customer</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Items</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Total</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Bayar</th></tr></thead><th style="padding:12px;">Aksi</th>
+              <thead><tr><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Invoice</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Tanggal</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Customer</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Items</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Total</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Bayar</th><th style="padding:12px;">Aksi</th></tr></thead><th style="padding:12px;">Aksi</th>
               <tbody id="riwayatTrxTable" style="vertical-align: top;"><tr><td colspan="6" style="text-align:center; color:#999; padding:20px;">Memuat riwayat...</td></tr></tbody>
             </table>
           </div>
@@ -768,16 +768,18 @@
 
 function resetRiwayatFilterToday() { let todayStr = new Date().toISOString().split('T')[0]; document.getElementById('riwayatDateStart').value = todayStr; document.getElementById('riwayatDateEnd').value = todayStr; loadRiwayat(); }
 
-    function cetakUlangStruk(i) {
+   function cetakUlangStruk(i) {
   const trx = riwayatData[i];
   if (!trx) { alert('Data transaksi tidak ditemukan'); return; }
 
-  const bukaStruk = function (p) {
-    // p = [nama_toko, alamat, telp, footer, logo_toko, logo_struk, qris, bca, mandiri, gopay, dana]
-    const rp = function (n) { return 'Rp ' + Number(n || 0).toLocaleString('id-ID'); };
-    const tglStr = new Date(trx.tgl).toLocaleString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  // PENTING: buka window LANGSUNG saat klik (biar tidak diblokir popup blocker)
+  const w = window.open('', '_blank', 'width=380,height=640');
+  if (!w) { alert('Popup diblokir browser!\nIzinkan popup untuk situs ini di address bar.'); return; }
 
-    // Info rekening otomatis muncul kalau metodenya transfer/e-wallet
+  const rp = function (n) { return 'Rp ' + Number(n || 0).toLocaleString('id-ID'); };
+  const tglStr = new Date(trx.tgl).toLocaleString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+  const tulis = function (p) {
     const met = String(trx.metode || '');
     let rekTxt = '';
     if (met.indexOf('BCA') !== -1 && p[7]) rekTxt += '<div>BCA: ' + esc(p[7]) + '</div>';
@@ -796,7 +798,7 @@ function resetRiwayatFilterToday() { let todayStr = new Date().toISOString().spl
 
     let itemsHtml = (trx.items || []).map(function (it) { return '<div class="it">' + esc(it) + '</div>'; }).join('');
 
-    const w = window.open('', '_blank', 'width=380,height=640');
+    w.document.open();
     w.document.write(`<html><head><title>Struk ${trx.id}</title><style>
       body{font-family:'Courier New',monospace;font-size:12px;width:280px;margin:0 auto;color:#000}
       .c{text-align:center} hr{border:none;border-top:1px dashed #000;margin:6px 0}
@@ -831,12 +833,18 @@ function resetRiwayatFilterToday() { let todayStr = new Date().toISOString().spl
     w.print();
   };
 
-  if (pengaturanCache) { bukaStruk(pengaturanCache); return; }
+  // Kalau data toko sudah pernah diambil, langsung cetak
+  if (pengaturanCache) { tulis(pengaturanCache); return; }
+
+  // Kalau belum, tampilkan "Memuat..." dulu di window, baru fetch
+  w.document.open();
+  w.document.write('<html><head><title>Memuat...</title></head><body style="font-family:Arial;text-align:center;padding-top:40px;">Memuat data toko...</body></html>');
+  w.document.close();
   callApi('getPengaturan').then(function (p) {
     pengaturanCache = p;
-    bukaStruk(p);
+    tulis(p);
   }).catch(function () {
-    bukaStruk(['Toko', '', '', '', '', '', '', '', '', '', '']);
+    tulis(['Toko', '', '', '', '', '', '', '', '', '', '']);
   });
 }
     
