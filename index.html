@@ -225,8 +225,7 @@
 
         <div id="view-produk" class="view" style="padding: 25px;">
           <div id="btnAddProdukContainer"></div>
-          <div class="table-scroll"><table class="data-table"><thead><tr><th>Foto</th><th>Nama Produk</th><th>Varian</th><th>Storage</th><th>Kategori</th><th>Harga</th><th>Stok Saat Ini</th><th>Aksi</th></tr></thead><tbody id="tableProduk"></tbody></table></div>
-        </div>
+<div class="table-scroll"><table class="data-table"><thead><tr><th>Foto</th><th>Nama Produk</th><th>Varian</th><th>Storage</th><th>Kategori</th><th>Harga</th><th>Modal (HPP)</th><th>Stok Saat Ini</th><th>Aksi</th></tr></thead><tbody id="tableProduk"></tbody></table></div>        </div>
 
         <div id="view-stok" class="view" style="padding: 25px;">
           <div class="dashboard-header">
@@ -1141,21 +1140,22 @@ document.getElementById('statLabaPeriode').innerText = 'Rp ' + Number(d.labaPeri
 
     function getBase64Image(previewId) { let img = document.getElementById(previewId); return (img.style.display === 'block') ? img.src : ''; }
 
-    function loadTableProduk() {
-      let addBtnContainer = document.getElementById('btnAddProdukContainer');
-      if (currentUser.role === 'admin') { addBtnContainer.innerHTML = '<button class="btn-add" onclick="openProdukModal()">+ Tambah Produk</button>'; } else { addBtnContainer.innerHTML = ''; }
-      let tbody = document.getElementById('tableProduk');
-      let rows = allProduk.map(function (p) {
-        let imgSrc = p[7] ? p[7] : 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2245%22 height=%2245%22><rect width=%22100%25%22 height=%22100%25%22 fill=%22%23eee%22/><text x=%2250%25%22 y=%2250%25%22 font-size=%228%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22>No Img</text></svg>';
-        let actions = '';
-        if (currentUser.role === 'admin') { actions = '<button class="btn-action" onclick="openProdukModal(\'' + esc(p[0]) + '\')">Edit</button><button class="btn-action danger" onclick="confirmDelete(\'' + esc(p[0]) + '\', \'produk\')">Hapus</button>'; }
-        else { actions = '<span style="color:#999; font-size:11px;">Read Only</span>'; }
-        let stokDisplay = p[8] && p[8].length > 0 ? p[8].length + ' IMEI' : p[5];
-        let konsBadge = p[9] ? ' <span style="color:blue; font-size:10px;">[Konsinyasi]</span>' : '';
-        return '<tr><td><img src="' + esc(imgSrc) + '" loading="lazy"></td><td>' + esc(p[1]) + konsBadge + '</td><td>' + esc(p[2]) + '</td><td>' + esc(p[3]) + '</td><td>' + esc(p[6]) + '</td><td>Rp ' + Number(p[4]).toLocaleString('id-ID') + '</td><td>' + esc(stokDisplay) + '</td><td>' + actions + '</td></tr>';
-      });
-      tbody.innerHTML = rows.join('');
-    }
+   function loadTableProduk() {
+  let addBtnContainer = document.getElementById('btnAddProdukContainer');
+  if (currentUser.role === 'admin') { addBtnContainer.innerHTML = '<button class="btn-add" onclick="openProdukModal()">+ Tambah Produk</button>'; } else { addBtnContainer.innerHTML = ''; }
+  let tbody = document.getElementById('tableProduk');
+  let rows = allProduk.map(function (p) {
+    let imgSrc = p[7] ? p[7] : 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2245%22 height=%2245%22><rect width=%22100%25%22 height=%22100%25%22 fill=%22%23eee%22/><text x=%2250%25%22 y=%2250%25%22 font-size=%228%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22>No Img</text></svg>';
+    let actions = '';
+    if (currentUser.role === 'admin') { actions = '<button class="btn-action" onclick="openProdukModal(\'' + esc(p[0]) + '\')">Edit</button><button class="btn-action danger" onclick="confirmDelete(\'' + esc(p[0]) + '\', \'produk\')">Hapus</button>'; }
+    else { actions = '<span style="color:#999; font-size:11px;">Read Only</span>'; }
+    let stokDisplay = p[8] && p[8].length > 0 ? p[8].length + ' IMEI' : p[5];
+    let konsBadge = p[9] ? ' <span style="color:blue; font-size:10px;">[Konsinyasi]</span>' : '';
+    let hppDisplay = currentUser.role === 'admin' ? 'Rp ' + Number(p[12] || 0).toLocaleString('id-ID') : '-';
+    return '<tr><td><img src="' + esc(imgSrc) + '" loading="lazy"></td><td>' + esc(p[1]) + konsBadge + '</td><td>' + esc(p[2]) + '</td><td>' + esc(p[3]) + '</td><td>' + esc(p[6]) + '</td><td>Rp ' + Number(p[4]).toLocaleString('id-ID') + '</td><td>' + hppDisplay + '</td><td>' + esc(stokDisplay) + '</td><td>' + actions + '</td></tr>';
+  });
+  tbody.innerHTML = rows.join('');
+}
 
         function openProdukModal(id) {
       if (currentUser.role !== 'admin') return;
