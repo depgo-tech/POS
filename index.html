@@ -261,7 +261,7 @@
           </div>
           <div class="data-table table-scroll">
             <table style="width: 100%; border-collapse: collapse; min-width: 640px;">
-              <thead><tr><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Invoice</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Tanggal</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Customer</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Items</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Total</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Bayar</th></tr></thead>
+              <thead><tr><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Invoice</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Tanggal</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Customer</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Items</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Total</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Bayar</th></tr></thead><th style="padding:12px;">Aksi</th>
               <tbody id="riwayatTrxTable" style="vertical-align: top;"><tr><td colspan="6" style="text-align:center; color:#999; padding:20px;">Memuat riwayat...</td></tr></tbody>
             </table>
           </div>
@@ -744,29 +744,102 @@
 
     function resetDashFilterToday() { let todayStr = new Date().toISOString().split('T')[0]; document.getElementById('dashDateStart').value = todayStr; document.getElementById('dashDateEnd').value = todayStr; loadDashboard(); }
 
-    function loadRiwayat() {
-      let startDate = document.getElementById('riwayatDateStart').value;
-      let endDate = document.getElementById('riwayatDateEnd').value;
-      let t = document.getElementById('riwayatTrxTable');
-      t.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999; padding:20px;">Memuat riwayat...</td></tr>';
-      callApi('getRiwayatTransaksi', { startDate: startDate, endDate: endDate }).then(function (d) {
-        let totalPenjualan = 0;
-        d.forEach(function(r) { totalPenjualan += Number(r.total) || 0; });
-        document.getElementById('riwayatTotalPenjualan').innerText = 'Rp ' + totalPenjualan.toLocaleString('id-ID');
-        document.getElementById('riwayatJumlahTrx').innerText = d.length;
-        if (!d || d.length === 0) { t.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999; padding:20px;">Belum ada transaksi pada periode ini</td></tr>'; return; }
-        let html = '';
-        d.forEach(function (r) {
-          let dateStr = new Date(r.tgl).toLocaleString('id-ID');
-          let itemsTxt = r.items.join(', ');
-          html += '<tr style="border-bottom:1px solid #f5f5f5;"><td style="padding:12px; font-weight:500;">' + esc(r.id) + '</td><td style="padding:12px; color:var(--text-gray);">' + esc(dateStr) + '</td><td style="padding:12px;">' + esc(r.pelanggan) + '</td><td style="padding:12px; font-size:12px;">' + esc(itemsTxt) + '</td><td style="padding:12px; font-weight:600;">Rp ' + Number(r.total).toLocaleString('id-ID') + '</td><td style="padding:12px;">' + esc(r.metode) + '</td></tr>';
-        });
-        t.innerHTML = html;
-      }).catch(function(err) { t.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red; padding:20px;">Error memuat riwayat: ' + esc(err.message) + '</td></tr>'; });
+  function loadRiwayat() {
+  let startDate = document.getElementById('riwayatDateStart').value;
+  let endDate = document.getElementById('riwayatDateEnd').value;
+  let t = document.getElementById('riwayatTrxTable');
+  t.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999; padding:20px;">Memuat riwayat...</td></tr>';
+  callApi('getRiwayatTransaksi', { startDate: startDate, endDate: endDate }).then(function (d) {
+    riwayatData = d || []; // BARU: simpan data global untuk cetak ulang struk
+    let totalPenjualan = 0;
+    d.forEach(function(r) { totalPenjualan += Number(r.total) || 0; });
+    document.getElementById('riwayatTotalPenjualan').innerText = 'Rp ' + totalPenjualan.toLocaleString('id-ID');
+    document.getElementById('riwayatJumlahTrx').innerText = d.length;
+    if (!d || d.length === 0) { t.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999; padding:20px;">Belum ada transaksi pada periode ini</td></tr>'; return; }
+    let html = '';
+    d.forEach(function (r, i) {
+      let dateStr = new Date(r.tgl).toLocaleString('id-ID');
+      let itemsTxt = r.items.join(', ');
+      html += '<tr style="border-bottom:1px solid #f5f5f5;"><td style="padding:12px; font-weight:500;">' + esc(r.id) + '</td><td style="padding:12px; color:var(--text-gray);">' + esc(dateStr) + '</td><td style="padding:12px;">' + esc(r.pelanggan) + '</td><td style="padding:12px; font-size:12px;">' + esc(itemsTxt) + '</td><td style="padding:12px; font-weight:600;">Rp ' + Number(r.total).toLocaleString('id-ID') + '</td><td style="padding:12px;">' + esc(r.metode) + '</td><td style="padding:12px;"><button onclick="cetakUlangStruk(' + i + ')" style="background:#0d6efd; color:#fff; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-size:12px;">🖨️ Cetak</button></td></tr>';
+    });
+    t.innerHTML = html;
+  }).catch(function(err) { t.innerHTML = '<tr><td colspan="7" style="text-align:center; color:red; padding:20px;">Error memuat riwayat: ' + esc(err.message) + '</td></tr>'; });
+}
+
+function resetRiwayatFilterToday() { let todayStr = new Date().toISOString().split('T')[0]; document.getElementById('riwayatDateStart').value = todayStr; document.getElementById('riwayatDateEnd').value = todayStr; loadRiwayat(); }
+
+    function cetakUlangStruk(i) {
+  const trx = riwayatData[i];
+  if (!trx) { alert('Data transaksi tidak ditemukan'); return; }
+
+  const bukaStruk = function (p) {
+    // p = [nama_toko, alamat, telp, footer, logo_toko, logo_struk, qris, bca, mandiri, gopay, dana]
+    const rp = function (n) { return 'Rp ' + Number(n || 0).toLocaleString('id-ID'); };
+    const tglStr = new Date(trx.tgl).toLocaleString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+    // Info rekening otomatis muncul kalau metodenya transfer/e-wallet
+    const met = String(trx.metode || '');
+    let rekTxt = '';
+    if (met.indexOf('BCA') !== -1 && p[7]) rekTxt += '<div>BCA: ' + esc(p[7]) + '</div>';
+    if (met.indexOf('Mandiri') !== -1 && p[8]) rekTxt += '<div>Mandiri: ' + esc(p[8]) + '</div>';
+    if (met.toLowerCase().indexOf('gopay') !== -1 && p[9]) rekTxt += '<div>GoPay: ' + esc(p[9]) + '</div>';
+    if (met.indexOf('DANA') !== -1 && p[10]) rekTxt += '<div>DANA: ' + esc(p[10]) + '</div>';
+
+    let diskonTxt = '';
+    if (trx.diskon && String(trx.diskon).trim() !== '' && Number(String(trx.diskon).replace('%', '')) > 0) {
+      diskonTxt = '<div class="row"><span>Diskon (' + esc(trx.diskon) + ')</span><span></span></div>';
+    }
+    let ttTxt = '';
+    if (trx.tt_nama && Number(trx.tt_nilai) > 0) {
+      ttTxt = '<div class="row"><span>Tukar Tambah (' + esc(trx.tt_nama) + ')</span><span>- ' + rp(trx.tt_nilai) + '</span></div>';
     }
 
-    function resetRiwayatFilterToday() { let todayStr = new Date().toISOString().split('T')[0]; document.getElementById('riwayatDateStart').value = todayStr; document.getElementById('riwayatDateEnd').value = todayStr; loadRiwayat(); }
+    let itemsHtml = (trx.items || []).map(function (it) { return '<div class="it">' + esc(it) + '</div>'; }).join('');
 
+    const w = window.open('', '_blank', 'width=380,height=640');
+    w.document.write(`<html><head><title>Struk ${trx.id}</title><style>
+      body{font-family:'Courier New',monospace;font-size:12px;width:280px;margin:0 auto;color:#000}
+      .c{text-align:center} hr{border:none;border-top:1px dashed #000;margin:6px 0}
+      .it{padding:2px 0;border-bottom:1px dotted #ccc;word-break:break-word}
+      .row{display:flex;justify-content:space-between;margin:2px 0}
+      @media print{@page{margin:3mm} body{width:100%}}
+    </style></head><body>
+      <div class="c">
+        ${p[5] ? `<img src="${p[5]}" style="max-width:130px">` : ''}
+        <h3 style="margin:4px 0">${p[0]}</h3>
+        <div>${p[1] || ''}</div>
+        <div>${p[2] || ''}</div>
+      </div>
+      <hr>
+      <div>No&nbsp;: ${trx.id}</div>
+      <div>Tgl&nbsp;: ${tglStr}</div>
+      <div>Pelanggan : ${trx.pelanggan || '-'}</div>
+      <hr>
+      ${itemsHtml}
+      <hr>
+      <div class="row"><b>TOTAL</b><b>${rp(trx.total)}</b></div>
+      ${diskonTxt}
+      ${ttTxt}
+      <div class="row"><span>Bayar</span><span>${esc(trx.metode || '-')}</span></div>
+      ${rekTxt ? `<hr>${rekTxt}` : ''}
+      <hr>
+      <div class="c">${p[3] || ''}</div>
+      <div class="c" style="margin-top:6px">--- CETAK ULANG ---</div>
+    </body></html>`);
+    w.document.close();
+    w.focus();
+    w.print();
+  };
+
+  if (pengaturanCache) { bukaStruk(pengaturanCache); return; }
+  callApi('getPengaturan').then(function (p) {
+    pengaturanCache = p;
+    bukaStruk(p);
+  }).catch(function () {
+    bukaStruk(['Toko', '', '', '', '', '', '', '', '', '', '']);
+  });
+}
+    
     function loadGaransi() {
       let t = document.getElementById('garansiTable');
       t.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999; padding:20px;">Memuat data garansi...</td></tr>';
