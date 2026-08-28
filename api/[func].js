@@ -117,10 +117,11 @@ module.exports = async (req, res) => {
         metodeBayarFinal = splitPayments.map(p => `${p.metode} (${p.jumlah})`).join(' + ');
       }
 
-      await supabase.from('transaksi').insert([{
+            await supabase.from('transaksi').insert([{
         id: idTrx, tgl: tgl, pelanggan: pelanggan, items: itemsArr.join(', '), 
         total: totalAkhir, metode: metodeBayarFinal, diskon: diskonStr,
-        tt_nama: ttNama || null, tt_imei: ttImei || null, tt_nilai: nilaiTukar
+        tt_nama: ttNama || null, tt_imei: ttImei || null, tt_nilai: nilaiTukar,
+        hpp_total: body.hppTotal || 0 // TAMBAHAN INI
       }]);
 
       let updatePromises = [];
@@ -394,7 +395,7 @@ module.exports = async (req, res) => {
       let end = (endDate || startDate || todayStr) + "T23:59:59.999Z";
       const { data: trxData } = await supabase.from('transaksi').select('*');
       const { data: prodData } = await supabase.from('produk').select('*');
-      let penjualanPeriode = 0, trxPeriode = 0, totalStok = 0, lowStok = [];
+           let penjualanPeriode = 0, trxPeriode = 0, totalStok = 0, lowStok = [], hppTotalPeriode = 0;
       let chartLabels = [], chartData = [], chartDateMap = {};
       for (let i = 6; i >= 0; i--) {
         let d = new Date(); d.setDate(d.getDate() - i);
@@ -406,15 +407,18 @@ module.exports = async (req, res) => {
         let tglObj = new Date(row.tgl);
         let nilai = Number(row.total) || 0;
         let tglStr = tglObj.toISOString().split('T')[0];
-        if (tglObj >= new Date(start) && tglObj <= new Date(end)) { penjualanPeriode += nilai; trxPeriode++; }
-        if (chartDateMap.hasOwnProperty(tglStr)) chartData[chartDateMap[tglStr]] += nilai;
+        if (tglObj >= new Date(start) && tglObj <= new Date(end)) { 
+          penjualanPeriode += nilai; 
+          trxPeriode++; 
+          hppTotalPeriode += Number(row.hpp_total) || 0; // TAMBAHAN INI
+        }        if (chartDateMap.hasOwnProperty(tglStr)) chartData[chartDateMap[tglStr]] += nilai;
       });
       (prodData || []).forEach(p => {
         let stok = p.imeis ? p.imeis.length : Number(p.stok);
         totalStok += stok;
         if (stok <= 5) lowStok.push({ id: p.id, nama: p.nama, varian: p.varian, stok: stok });
       });
-      return res.json({ penjualanPeriode, trxPeriode, totalTrx: trxData ? trxData.length : 0, totalProduk: prodData ? prodData.length : 0, totalStok, lowStok, chartLabels, chartData });
+      return res.json({ penjualanPeriode, trxPeriode,       return res.json({ penjualanPeriode, trxPeriode, hppTotal: hppTotalPeriode, totalTrx: trxData ? trxData.length : 0, totalProduk: prodData ? prodData.length : 0, totalStok, lowStok, chartLabels, chartData });: trxData ? trxData.length : 0, totalProduk: prodData ? prodData.length : 0, totalStok, lowStok, chartLabels, chartData });
     }
 
     if (func === 'getUsers') {
