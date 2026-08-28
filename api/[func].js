@@ -387,7 +387,7 @@ module.exports = async (req, res) => {
       return res.json(mapped);
     }
 
-    if (func === 'getDashboardData') {
+        if (func === 'getDashboardData') {
       const { startDate, endDate } = body;
       let now = new Date();
       let todayStr = now.toISOString().split('T')[0];
@@ -395,14 +395,17 @@ module.exports = async (req, res) => {
       let end = (endDate || startDate || todayStr) + "T23:59:59.999Z";
       const { data: trxData } = await supabase.from('transaksi').select('*');
       const { data: prodData } = await supabase.from('produk').select('*');
-           let penjualanPeriode = 0, trxPeriode = 0, totalStok = 0, lowStok = [], hppTotalPeriode = 0;
+      
+      let penjualanPeriode = 0, trxPeriode = 0, totalStok = 0, lowStok = [], hppTotalPeriode = 0;
       let chartLabels = [], chartData = [], chartDateMap = {};
+      
       for (let i = 6; i >= 0; i--) {
         let d = new Date(); d.setDate(d.getDate() - i);
         let key = d.toISOString().split('T')[0];
         chartLabels.push(d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' }));
         chartData.push(0); chartDateMap[key] = chartLabels.length - 1;
       }
+      
       (trxData || []).forEach(row => {
         let tglObj = new Date(row.tgl);
         let nilai = Number(row.total) || 0;
@@ -410,15 +413,28 @@ module.exports = async (req, res) => {
         if (tglObj >= new Date(start) && tglObj <= new Date(end)) { 
           penjualanPeriode += nilai; 
           trxPeriode++; 
-          hppTotalPeriode += Number(row.hpp_total) || 0; // TAMBAHAN INI
-        }        if (chartDateMap.hasOwnProperty(tglStr)) chartData[chartDateMap[tglStr]] += nilai;
+          hppTotalPeriode += Number(row.hpp_total) || 0; 
+        }
+        if (chartDateMap.hasOwnProperty(tglStr)) chartData[chartDateMap[tglStr]] += nilai;
       });
+      
       (prodData || []).forEach(p => {
         let stok = p.imeis ? p.imeis.length : Number(p.stok);
         totalStok += stok;
         if (stok <= 5) lowStok.push({ id: p.id, nama: p.nama, varian: p.varian, stok: stok });
       });
-      return res.json({ penjualanPeriode, trxPeriode, hppTotal: hppTotalPeriode, totalTrx: trxData ? trxData.length : 0, totalProduk: prodData ? prodData.length : 0, totalStok, lowStok, chartLabels, chartData });: trxData ? trxData.length : 0, totalProduk: prodData ? prodData.length : 0, totalStok, lowStok, chartLabels, chartData });
+      
+      return res.json({ 
+        penjualanPeriode, 
+        trxPeriode, 
+        hppTotal: hppTotalPeriode, 
+        totalTrx: trxData ? trxData.length : 0, 
+        totalProduk: prodData ? prodData.length : 0, 
+        totalStok, 
+        lowStok, 
+        chartLabels, 
+        chartData 
+      });
     }
 
     if (func === 'getUsers') {
