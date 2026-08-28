@@ -1463,25 +1463,61 @@
     }
 
     function renderSplitPayments() {
-      let html = '';
-      splitPayments.forEach((sp, idx) => {
-        let displayJumlah = sp.jumlah ? sp.jumlah.toLocaleString('id-ID') : '';
-        html += `<div style="display:flex; gap:5px; margin-bottom:5px;">
-          <select onchange="updateSplitPayment(${idx}, 'metode', this.value)" style="flex:1; padding:6px; border:1px solid #ddd; border-radius:4px;">
-            <option value="Cash" ${sp.metode === 'Cash' ? 'selected' : ''}>Cash</option>
-            <option value="QRIS" ${sp.metode === 'QRIS' ? 'selected' : ''}>QRIS</option>
-            <option value="Transfer BCA" ${sp.metode === 'Transfer BCA' ? 'selected' : ''}>Transfer BCA</option>
-            <option value="Transfer Mandiri" ${sp.metode === 'Transfer Mandiri' ? 'selected' : ''}>Transfer Mandiri</option>
-            <option value="GoPay" ${sp.metode === 'GoPay' ? 'selected' : ''}>GoPay</option>
-            <option value="DANA" ${sp.metode === 'DANA' ? 'selected' : ''}>DANA</option>
-          </select>
-          <input type="text" value="${displayJumlah}" oninput="formatRupiah(this); updateSplitPayment(${idx}, 'jumlah', this.value)" placeholder="Rp" style="width:80px; padding:6px; border:1px solid #ddd; border-radius:4px; text-align:right;">
-          <button onclick="removeSplitPayment(${idx})" style="background:#dc3545; color:#fff; border:none; padding:6px 10px; border-radius:4px; cursor:pointer;">X</button>
-        </div>`;
-      });
-      html += `<button onclick="addSplitPayment()" style="background:#eee; border:1px solid #ddd; padding:5px 10px; border-radius:4px; cursor:pointer; font-size:12px; margin-top:5px;">+ Tambah Pembayaran</button>`;
-      document.getElementById('splitPaymentArea').innerHTML = html;
+  let html = '';
+  splitPayments.forEach((sp, idx) => {
+    let displayJumlah = sp.jumlah ? sp.jumlah.toLocaleString('id-ID') : '';
+    html += `<div style="display:flex; gap:5px; margin-bottom:5px;">
+      <select onchange="handleMetodeChange(${idx}, this)" style="flex:1; padding:6px; border:1px solid #ddd; border-radius:4px;">
+        <optgroup label="Tunai / QR">
+          <option value="Cash" ${sp.metode === 'Cash' ? 'selected' : ''}>Cash / Tunai</option>
+          <option value="QRIS" ${sp.metode === 'QRIS' ? 'selected' : ''}>QRIS</option>
+        </optgroup>
+        <optgroup label="E-Wallet">
+          <option value="GoPay" ${sp.metode === 'GoPay' ? 'selected' : ''}>GoPay</option>
+          <option value="OVO" ${sp.metode === 'OVO' ? 'selected' : ''}>OVO</option>
+          <option value="DANA" ${sp.metode === 'DANA' ? 'selected' : ''}>DANA</option>
+          <option value="ShopeePay" ${sp.metode === 'ShopeePay' ? 'selected' : ''}>ShopeePay</option>
+          <option value="LinkAja" ${sp.metode === 'LinkAja' ? 'selected' : ''}>LinkAja</option>
+        </optgroup>
+        <optgroup label="Transfer Bank">
+          <option value="Transfer BCA" ${sp.metode === 'Transfer BCA' ? 'selected' : ''}>Transfer BCA</option>
+          <option value="Transfer Mandiri" ${sp.metode === 'Transfer Mandiri' ? 'selected' : ''}>Transfer Mandiri</option>
+          <option value="Transfer BRI" ${sp.metode === 'Transfer BRI' ? 'selected' : ''}>Transfer BRI</option>
+          <option value="Transfer Bank Lain" ${sp.metode === 'Transfer Bank Lain' ? 'selected' : ''}>Transfer Bank Lain</option>
+        </optgroup>
+        <optgroup label="Cicilan / Leasing">
+          <option value="Cicilan Home Credit" ${sp.metode === 'Cicilan Home Credit' ? 'selected' : ''}>Cicilan Home Credit</option>
+          <option value="Cicilan Kredit Ponsel" ${sp.metode === 'Cicilan Kredit Ponsel' ? 'selected' : ''}>Cicilan Kredit Ponsel</option>
+          <option value="Cicilan Kredivo" ${sp.metode === 'Cicilan Kredivo' ? 'selected' : ''}>Cicilan Kredivo</option>
+          <option value="__custom">➕ Cicilan Lainnya (ketik nama)</option>
+        </optgroup>
+      </select>
+      <input type="text" value="${displayJumlah}" oninput="formatRupiah(this); updateSplitPayment(${idx}, 'jumlah', this.value)" placeholder="Rp" style="width:80px; padding:6px; border:1px solid #ddd; border-radius:4px; text-align:right;">
+      <button onclick="removeSplitPayment(${idx})" style="background:#dc3545; color:#fff; border:none; padding:6px 10px; border-radius:4px; cursor:pointer;">X</button>
+    </div>`;
+  });
+  html += `<button onclick="addSplitPayment()" style="background:#eee; border:1px solid #ddd; padding:5px 10px; border-radius:4px; cursor:pointer; font-size:12px; margin-top:5px;">+ Tambah Pembayaran</button>`;
+  document.getElementById('splitPaymentArea').innerHTML = html;
+}
+
+// BARU: handle pilihan "Cicilan Lainnya" -> muncul popup ketik nama
+function handleMetodeChange(idx, selectEl) {
+  if (selectEl.value === '__custom') {
+    const nama = prompt('Tulis nama leasing/cicilan:\n(contoh: Funding, Fifdom, Multifinance XYZ)');
+    if (nama && nama.trim()) {
+      const val = 'Cicilan ' + nama.trim();
+      // Ubah option yang terpilih jadi nama cicilan custom
+      selectEl.options[selectEl.selectedIndex].value = val;
+      selectEl.options[selectEl.selectedIndex].text = val;
+      updateSplitPayment(idx, 'metode', val);
+    } else {
+      selectEl.value = 'Cash';
+      updateSplitPayment(idx, 'metode', 'Cash');
     }
+  } else {
+    updateSplitPayment(idx, 'metode', selectEl.value);
+  }
+}
 
     function hitungTotal() {
       let s = keranjang.reduce(function (sum, i) { return sum + (i.harga * i.qty); }, 0);
