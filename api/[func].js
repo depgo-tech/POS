@@ -46,22 +46,22 @@ module.exports = async (req, res) => {
 
     if (func === 'getProduk') {
       const { data } = await supabase.from('produk').select('*').order('nama', { ascending: true });
-const mapped = (data || []).map(p => [p.id, p.nama, p.varian, p.storage, p.harga, p.stok, p.kategori, p.foto, p.imeis || [], p.is_konsinyasi || false, p.mitra_id || null, p.harga_setoran || 0, p.hpp || 0]);      return res.json(mapped);
+      const mapped = (data || []).map(p => [p.id, p.nama, p.varian, p.storage, p.harga, p.stok, p.kategori, p.foto, p.imeis || [], p.is_konsinyasi || false, p.mitra_id || null, p.harga_setoran || 0]);
+      return res.json(mapped);
     }
 
     if (func === 'saveProduk') {
       const data = body;
       if (!data.nama || data.harga === '' || data.harga === undefined) return res.status(400).json({ error: 'Nama dan Harga wajib diisi.' });
       
-     const payload = {
-  id: data.id, nama: data.nama, varian: data.varian, storage: data.storage, 
-  harga: Number(data.harga), stok: 0, 
-  kategori: data.kategori, foto: data.foto, imeis: [],
-  is_konsinyasi: data.isKonsinyasi || false,
-  mitra_id: data.isKonsinyasi ? data.mitraId : null,
-  harga_setoran: data.isKonsinyasi ? (Number(data.hargaSetoran) || 0) : 0,
-  hpp: Number(data.hpp) || 0
-};
+      const payload = {
+        id: data.id, nama: data.nama, varian: data.varian, storage: data.storage, 
+        harga: Number(data.harga), stok: 0, 
+        kategori: data.kategori, foto: data.foto, imeis: [],
+        is_konsinyasi: data.isKonsinyasi || false,
+        mitra_id: data.isKonsinyasi ? data.mitraId : null,
+        harga_setoran: data.isKonsinyasi ? (Number(data.hargaSetoran) || 0) : 0
+      };
       
       const { data: existing } = await supabase.from('produk').select('id').eq('id', data.id).single();
       if (existing) {
@@ -107,14 +107,6 @@ const mapped = (data || []).map(p => [p.id, p.nama, p.varian, p.storage, p.harga
       if (String(diskonStr).indexOf('%') !== -1) diskonRp = (total * parseFloat(diskonStr)) / 100;
       else diskonRp = parseFloat(diskonStr) || 0;
 
-      // TAMBAHKAN setelah blok hitung diskonRp / sebelum insert ke tabel transaksi
-let totalHpp = 0;
-keranjang.forEach(item => {
-  let prod = prodMap[item.id];
-  let modalSatuan = prod.is_konsinyasi ? Number(prod.harga_setoran || 0) : Number(prod.hpp || 0);
-  totalHpp += modalSatuan * Number(item.qty);
-});
-
       let nilaiTukar = Number(ttNilai) || 0;
       let totalAkhir = total - diskonRp - nilaiTukar;
       let tgl = new Date().toISOString();
@@ -144,13 +136,6 @@ keranjang.forEach(item => {
           let newStok = Number(prod.stok) - Number(item.qty);
           updatePromises.push(supabase.from('produk').update({ stok: newStok }).eq('id', item.id));
         }
-
-        await supabase.from('transaksi').insert([{
-  id: idTrx, tgl: tgl, pelanggan: pelanggan, items: itemsArr.join(', '), 
-  total: totalAkhir, metode: metodeBayarFinal, diskon: diskonStr,
-  tt_nama: ttNama || null, tt_imei: ttImei || null, tt_nilai: nilaiTukar,
-  total_hpp: totalHpp
-}]);
 
         // PERBAIKAN GARANSI: Catat garansi untuk SEMUA ITEM jika masa garansi > 0
         if (Number(masaGaransi) > 0) {
@@ -397,13 +382,8 @@ keranjang.forEach(item => {
       let start = (startDate || todayStr) + "T00:00:00.000Z";
       let end = (endDate || startDate || todayStr) + "T23:59:59.999Z";
       const { data } = await supabase.from('transaksi').select('*').gte('tgl', start).lte('tgl', end).order('tgl', { ascending: false });
-const mapped = (data || []).map(row => ({
-  id: row.id, tgl: row.tgl, pelanggan: row.pelanggan,
-  items: row.items ? row.items.split(', ') : [],
-  total: row.total, metode: row.metode,
-  totalHpp: row.total_hpp || 0,
-  laba: (Number(row.total) || 0) - (Number(row.total_hpp) || 0)
-}));      return res.json(mapped);
+      const mapped = (data || []).map(row => ({ id: row.id, tgl: row.tgl, pelanggan: row.pelanggan, items: row.items ? row.items.split(', ') : [], total: row.total, metode: row.metode }));
+      return res.json(mapped);
     }
 
     if (func === 'getDashboardData') {
@@ -415,8 +395,6 @@ const mapped = (data || []).map(row => ({
       const { data: trxData } = await supabase.from('transaksi').select('*');
       const { data: prodData } = await supabase.from('produk').select('*');
       let penjualanPeriode = 0, trxPeriode = 0, totalStok = 0, lowStok = [];
-      let labaPeriode = penjualanPeriode - hppPeriode;
-return res.json({ penjualanPeriode, trxPeriode, totalTrx: trxData ? trxData.length : 0, totalProduk: prodData ? prodData.length : 0, totalStok, lowStok, chartLabels, chartData, hppPeriode, labaPeriode });
       let chartLabels = [], chartData = [], chartDateMap = {};
       for (let i = 6; i >= 0; i--) {
         let d = new Date(); d.setDate(d.getDate() - i);
@@ -428,7 +406,8 @@ return res.json({ penjualanPeriode, trxPeriode, totalTrx: trxData ? trxData.leng
         let tglObj = new Date(row.tgl);
         let nilai = Number(row.total) || 0;
         let tglStr = tglObj.toISOString().split('T')[0];
-if (tglObj >= new Date(start) && tglObj <= new Date(end)) { penjualanPeriode += nilai; trxPeriode++; hppPeriode += Number(row.total_hpp) || 0; }        if (chartDateMap.hasOwnProperty(tglStr)) chartData[chartDateMap[tglStr]] += nilai;
+        if (tglObj >= new Date(start) && tglObj <= new Date(end)) { penjualanPeriode += nilai; trxPeriode++; }
+        if (chartDateMap.hasOwnProperty(tglStr)) chartData[chartDateMap[tglStr]] += nilai;
       });
       (prodData || []).forEach(p => {
         let stok = p.imeis ? p.imeis.length : Number(p.stok);
