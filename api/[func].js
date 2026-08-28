@@ -14,6 +14,29 @@ function hashPassword(plain) {
   return crypto.createHash('sha256').update(String(plain)).digest('hex');
 }
 
+// ===== BARU: Helper tanggal WIB (UTC+7), supaya "hari ini" = hari ini jam Indonesia =====
+function wibDateStr(d) {
+  return new Date(new Date(d).getTime() + 7 * 3600 * 1000).toISOString().split('T')[0];
+}
+
+function getRangeWib(startDate, endDate) {
+  const todayStr = wibDateStr(Date.now());
+  const start = (startDate || todayStr) + 'T00:00:00+07:00';
+  const end = (endDate || startDate || todayStr) + 'T23:59:59.999+07:00';
+  return { start, end };
+}
+
+// ===== BARU: parse metode transaksi lama: "BCA (500000) + QRIS (250000)" =====
+function parseMetodeStr(metodeStr, fallbackTotal) {
+  if (!metodeStr) return [{ metode: 'Lainnya', jumlah: Number(fallbackTotal) || 0 }];
+  if (String(metodeStr).indexOf(' + ') === -1) return [{ metode: metodeStr, jumlah: Number(fallbackTotal) || 0 }];
+  return String(metodeStr).split(' + ').map(part => {
+    const m = part.trim().match(/^(.*?)\s*\(([\d.,]+)\)$/);
+    if (m) return { metode: m[1].trim(), jumlah: Number(String(m[2]).replace(/[.,]/g, '')) || 0 };
+    return { metode: part.trim(), jumlah: 0 };
+  });
+}
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
@@ -46,23 +69,25 @@ module.exports = async (req, res) => {
 
     if (func === 'getProduk') {
       const { data } = await supabase.from('produk').select('*').order('nama', { ascending: true });
-      const mapped = (data || []).map(p => [p.id, p.nama, p.varian, p.storage, p.harga, p.stok, p.kategori, p.foto, p.imeis || [], p.is_konsinyasi || false, p.mitra_id || null, p.harga_setoran || 0]);
+      // index 12 = harga_modal (BARU, ditambahkan di paling belakang biar frontend lama tidak rusak)
+      const mapped = (data || []).map(p => [p.id, p.nama, p.varian, p.storage, p.harga, p.stok, p.kategori, p.foto, p.imeis || [], p.is_konsinyasi || false, p.mitra_id || null, p.harga_setoran || 0, p.harga_modal || 0]);
       return res.json(mapped);
     }
 
     if (func === 'saveProduk') {
       const data = body;
       if (!data.nama || data.harga === '' || data.harga === undefined) return res.status(400).json({ error: 'Nama dan Harga wajib diisi.' });
-      
+
       const payload = {
-        id: data.id, nama: data.nama, varian: data.varian, storage: data.storage, 
-        harga: Number(data.harga), stok: 0, 
+        id: data.id, nama: data.nama, varian: data.varian, storage: data.storage,
+        harga: Number(data.harga), stok: 0,
         kategori: data.kategori, foto: data.foto, imeis: [],
+        harga_modal: Number(data.hargaModal) || 0, // BARU
         is_konsinyasi: data.isKonsinyasi || false,
         mitra_id: data.isKonsinyasi ? data.mitraId : null,
         harga_setoran: data.isKonsinyasi ? (Number(data.hargaSetoran) || 0) : 0
       };
-      
+
       const { data: existing } = await supabase.from('produk').select('id').eq('id', data.id).single();
       if (existing) {
         const { data: currentProd } = await supabase.from('produk').select('stok, imeis').eq('id', data.id).single();
@@ -77,7 +102,7 @@ module.exports = async (req, res) => {
 
     if (func === 'simpanTransaksi') {
       const { keranjang, pelanggan, diskonStr, metode, ttNama, ttImei, ttNilai, masaGaransi, splitPayments } = body;
-      
+
       const itemIds = keranjang.map(i => i.id);
       const { data: prods } = await supabase.from('produk').select('*').in('id', itemIds);
       const prodMap = {};
@@ -95,9 +120,15 @@ module.exports = async (req, res) => {
       }
 
       let total = 0;
+      let hppTotal = 0; // BARU: HPP
       let itemsArr = [];
       keranjang.forEach(item => {
-        total += Number(item.harga) * Number(item.qty);
+        const qty = Number(item.qty) || 0;
+        total += Number(item.harga) * qty;
+        const prod = prodMap[item.id];
+        // BARU: HPP -> konsinyasi pakai harga_setoran (modal ke mitra), produk biasa pakai harga_modal
+        const modalSatuan = prod.is_konsinyasi ? Number(prod.harga_setoran || 0) : Number(prod.harga_modal || 0);
+        hppTotal += modalSatuan * qty;
         let storageTxt = item.storage ? ' (' + item.storage + ')' : '';
         let imeiTxt = item.imei ? ' [IMEI:' + item.imei + ']' : '';
         itemsArr.push(item.nama + ' ' + item.varian + storageTxt + imeiTxt + ' x' + item.qty);
@@ -113,23 +144,26 @@ module.exports = async (req, res) => {
       let idTrx = 'INV' + tgl.replace(/[-:T]/g, '').split('.')[0];
 
       let metodeBayarFinal = metode;
+      // BARU: simpan rincian pembayaran terstruktur (untuk rekap per metode di laporan)
+      let rincianBayar = [{ metode: metode, jumlah: totalAkhir }];
       if (splitPayments && splitPayments.length > 1) {
-        metodeBayarFinal = splitPayments.map(p => `${p.metode} (${p.jumlah})`).join(' + ');
+        metodeBayarFinal = splitPayments.map(p => p.metode + ' (' + p.jumlah + ')').join(' + ');
+        rincianBayar = splitPayments.map(p => ({ metode: p.metode, jumlah: Number(p.jumlah) || 0 }));
       }
 
-            await supabase.from('transaksi').insert([{
-        id: idTrx, tgl: tgl, pelanggan: pelanggan, items: itemsArr.join(', '), 
-        total: totalAkhir, metode: metodeBayarFinal, diskon: diskonStr,
-        tt_nama: ttNama || null, tt_imei: ttImei || null, tt_nilai: nilaiTukar,
-        hpp_total: body.hppTotal || 0 // TAMBAHAN INI
+      await supabase.from('transaksi').insert([{
+        id: idTrx, tgl: tgl, pelanggan: pelanggan, items: itemsArr.join(', '),
+        total: totalAkhir, hpp: hppTotal, metode: metodeBayarFinal, diskon: diskonStr,
+        rincian_bayar: rincianBayar,
+        tt_nama: ttNama || null, tt_imei: ttImei || null, tt_nilai: nilaiTukar
       }]);
 
       let updatePromises = [];
-      let mitraHutangMap = {}; 
+      let mitraHutangMap = {};
 
       for (let item of keranjang) {
         let prod = prodMap[item.id];
-        
+
         if (item.imei) {
           let newImeis = (prod.imeis || []).filter(im => im.imei !== item.imei);
           updatePromises.push(supabase.from('produk').update({ imeis: newImeis, stok: newImeis.length }).eq('id', item.id));
@@ -138,16 +172,15 @@ module.exports = async (req, res) => {
           updatePromises.push(supabase.from('produk').update({ stok: newStok }).eq('id', item.id));
         }
 
-        // PERBAIKAN GARANSI: Catat garansi untuk SEMUA ITEM jika masa garansi > 0
         if (Number(masaGaransi) > 0) {
           let warrantyId = 'GR' + Date.now() + Math.floor(Math.random() * 1000) + Math.floor(Math.random()*1000);
           let namaProduk = item.nama + ' ' + (item.varian || '') + (item.storage ? ' (' + item.storage + ')' : '');
           updatePromises.push(supabase.from('garansi').insert([{
             id: warrantyId,
-            no_invoice: idTrx, 
-            tgl: tgl, 
-            imei: item.imei || '-', // Pakai '-' kalau tidak ada IMEI
-            nama_produk: namaProduk, 
+            no_invoice: idTrx,
+            tgl: tgl,
+            imei: item.imei || '-',
+            nama_produk: namaProduk,
             pelanggan: pelanggan,
             telp: '',
             masa_garansi: Number(masaGaransi)
@@ -170,7 +203,7 @@ module.exports = async (req, res) => {
       }
 
       await Promise.all(updatePromises);
-      return res.json({ status: "Sukses", idTrx: idTrx, total: totalAkhir });
+      return res.json({ status: "Sukses", idTrx: idTrx, total: totalAkhir, hpp: hppTotal, laba: totalAkhir - hppTotal });
     }
 
     if (func === 'getGaransi') {
@@ -220,7 +253,7 @@ module.exports = async (req, res) => {
       const { mitraId, mitraNama, items, total } = body;
       let tgl = new Date().toISOString();
       let id = 'KK' + Date.now();
-      
+
       let updatePromises = [];
       for (let item of items) {
         const { data: p } = await supabase.from('produk').select('*').eq('id', item.id).single();
@@ -235,14 +268,14 @@ module.exports = async (req, res) => {
         }
       }
       await Promise.all(updatePromises);
-      
+
       let itemsStr = items.map(i => i.nama + (i.imei ? ' ['+i.imei+']' : ' x'+i.qty)).join(', ');
-      
+
       await supabase.from('konsinyasi_keluar').insert([{
         id: id, tgl: tgl, mitra_id: mitraId, mitra_nama: mitraNama,
         items: itemsStr, total: total, status: 'Belum Lunas', terbayar: 0
       }]);
-      
+
       const { data: mitra } = await supabase.from('mitra').select('piutang').eq('id', mitraId).single();
       if (mitra) {
         await supabase.from('mitra').update({ piutang: Number(mitra.piutang) + Number(total) }).eq('id', mitraId);
@@ -262,7 +295,7 @@ module.exports = async (req, res) => {
         let newTerbayar = Number(kk.terbayar || 0) + Number(jumlah);
         let status = newTerbayar >= Number(kk.total) ? 'Lunas' : 'Belum Lunas';
         await supabase.from('konsinyasi_keluar').update({ terbayar: newTerbayar, status: status }).eq('id', id);
-        
+
         const { data: mitra } = await supabase.from('mitra').select('piutang').eq('id', kk.mitra_id).single();
         if (mitra) {
           let newPiutang = Number(mitra.piutang) - Number(jumlah);
@@ -302,7 +335,7 @@ module.exports = async (req, res) => {
           jmlLog = Number(jumlah);
           await supabase.from('produk').update({ stok: stokBaru }).eq('id', produkId);
         }
-        
+
         let id = 'LOG' + Date.now();
         let tgl = new Date().toISOString();
         await supabase.from('stok_log').insert([{
@@ -337,7 +370,7 @@ module.exports = async (req, res) => {
           jmlLog = Number(jumlah);
           await supabase.from('produk').update({ stok: stokBaru }).eq('id', produkId);
         }
-        
+
         let id = 'LOG' + Date.now();
         let tgl = new Date().toISOString();
         await supabase.from('stok_log').insert([{
@@ -350,7 +383,7 @@ module.exports = async (req, res) => {
     }
 
     if (func === 'submitOpname') {
-      const { items } = body; 
+      const { items } = body;
       let promises = [];
       let logs = [];
       let tgl = new Date().toISOString();
@@ -378,62 +411,113 @@ module.exports = async (req, res) => {
 
     if (func === 'getRiwayatTransaksi') {
       const { startDate, endDate } = body;
-      let now = new Date();
-      let todayStr = now.toISOString().split('T')[0];
-      let start = (startDate || todayStr) + "T00:00:00.000Z";
-      let end = (endDate || startDate || todayStr) + "T23:59:59.999Z";
+      const { start, end } = getRangeWib(startDate, endDate);
       const { data } = await supabase.from('transaksi').select('*').gte('tgl', start).lte('tgl', end).order('tgl', { ascending: false });
-      const mapped = (data || []).map(row => ({ id: row.id, tgl: row.tgl, pelanggan: row.pelanggan, items: row.items ? row.items.split(', ') : [], total: row.total, metode: row.metode }));
+      const mapped = (data || []).map(row => ({
+        id: row.id, tgl: row.tgl, pelanggan: row.pelanggan,
+        items: row.items ? row.items.split(', ') : [],
+        total: row.total,
+        hpp: Number(row.hpp) || 0,                                          // BARU
+        laba: (Number(row.total) || 0) - (Number(row.hpp) || 0),            // BARU
+        metode: row.metode, diskon: row.diskon,
+        tt_nama: row.tt_nama, tt_imei: row.tt_imei, tt_nilai: row.tt_nilai || 0
+      }));
       return res.json(mapped);
     }
 
-           if (func === 'getDashboardData') {
+    if (func === 'getDashboardData') {
       const { startDate, endDate } = body;
-      let now = new Date();
-      let todayStr = now.toISOString().split('T')[0];
-      let start = (startDate || todayStr) + "T00:00:00.000Z";
-      let end = (endDate || startDate || todayStr) + "T23:59:59.999Z";
+      const { start, end } = getRangeWib(startDate, endDate);
       const { data: trxData } = await supabase.from('transaksi').select('*');
       const { data: prodData } = await supabase.from('produk').select('*');
-      
-      let penjualanPeriode = 0, trxPeriode = 0, totalStok = 0, lowStok = [], hppTotalPeriode = 0;
+      let penjualanPeriode = 0, hppPeriode = 0, trxPeriode = 0, totalStok = 0, lowStok = [];
       let chartLabels = [], chartData = [], chartDateMap = {};
-      
       for (let i = 6; i >= 0; i--) {
         let d = new Date(); d.setDate(d.getDate() - i);
-        let key = d.toISOString().split('T')[0];
-        chartLabels.push(d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit' }));
+        let key = wibDateStr(d);
+        let parts = key.split('-');
+        chartLabels.push(parts[2] + '/' + parts[1]);
         chartData.push(0); chartDateMap[key] = chartLabels.length - 1;
       }
-      
       (trxData || []).forEach(row => {
         let tglObj = new Date(row.tgl);
         let nilai = Number(row.total) || 0;
-        let tglStr = tglObj.toISOString().split('T')[0];
-        if (tglObj >= new Date(start) && tglObj <= new Date(end)) { 
-          penjualanPeriode += nilai; 
-          trxPeriode++; 
-          hppTotalPeriode += Number(row.hpp_total) || 0; 
+        let hpp = Number(row.hpp) || 0;
+        let tglStr = wibDateStr(tglObj);
+        if (tglObj >= new Date(start) && tglObj <= new Date(end)) {
+          penjualanPeriode += nilai;
+          hppPeriode += hpp;      // BARU
+          trxPeriode++;
         }
         if (chartDateMap.hasOwnProperty(tglStr)) chartData[chartDateMap[tglStr]] += nilai;
       });
-      
       (prodData || []).forEach(p => {
         let stok = p.imeis ? p.imeis.length : Number(p.stok);
         totalStok += stok;
         if (stok <= 5) lowStok.push({ id: p.id, nama: p.nama, varian: p.varian, stok: stok });
       });
-      
-      return res.json({ 
-        penjualanPeriode, 
-        trxPeriode, 
-        hppTotal: hppTotalPeriode, 
-        totalTrx: trxData ? trxData.length : 0, 
-        totalProduk: prodData ? prodData.length : 0, 
-        totalStok, 
-        lowStok, 
-        chartLabels, 
-        chartData 
+      return res.json({
+        penjualanPeriode,
+        hppPeriode,                                        // BARU
+        labaPeriode: penjualanPeriode - hppPeriode,        // BARU
+        trxPeriode, totalTrx: trxData ? trxData.length : 0,
+        totalProduk: prodData ? prodData.length : 0, totalStok, lowStok, chartLabels, chartData
+      });
+    }
+
+    // ===== BARU: Laporan harian (untuk cetak/report) =====
+    if (func === 'getLaporanHarian') {
+      const { startDate, endDate } = body;
+      const { start, end } = getRangeWib(startDate, endDate);
+      const todayStr = wibDateStr(Date.now());
+
+      const { data: trxData, error } = await supabase.from('transaksi')
+        .select('*').gte('tgl', start).lte('tgl', end).order('tgl', { ascending: true });
+      if (error) throw error;
+
+      let totalPenjualan = 0, totalHpp = 0;
+      let metodeMap = {};
+      let produkTerjual = {};
+      let list = [];
+
+      (trxData || []).forEach(row => {
+        const total = Number(row.total) || 0;
+        const hpp = Number(row.hpp) || 0;
+        totalPenjualan += total;
+        totalHpp += hpp;
+
+        // Rekap per metode: pakai rincian_bayar kalau ada, kalau tidak parse string metode lama
+        let rincian = (Array.isArray(row.rincian_bayar) && row.rincian_bayar.length > 0)
+          ? row.rincian_bayar
+          : parseMetodeStr(row.metode, total);
+        rincian.forEach(r => {
+          const key = String(r.metode || 'Lainnya').trim();
+          metodeMap[key] = (metodeMap[key] || 0) + (Number(r.jumlah) || 0);
+        });
+
+        // Best-effort rekap produk terjual dari teks items "Nama ... x2"
+        (row.items ? String(row.items).split(', ') : []).forEach(it => {
+          const m = it.match(/ x(\d+)$/);
+          const qty = m ? Number(m[1]) : 1;
+          const nama = it.replace(/ x\d+$/, '').replace(/ \[IMEI:.*?\]/, '').trim();
+          produkTerjual[nama] = (produkTerjual[nama] || 0) + qty;
+        });
+
+        list.push({
+          id: row.id, tgl: row.tgl, pelanggan: row.pelanggan,
+          items: row.items ? String(row.items).split(', ') : [],
+          total: total, hpp: hpp, laba: total - hpp,
+          metode: row.metode, diskon: row.diskon, tt_nilai: row.tt_nilai || 0
+        });
+      });
+
+      return res.json({
+        periode: { start: startDate || todayStr, end: endDate || startDate || todayStr },
+        jumlahTransaksi: list.length,
+        totalPenjualan, totalHpp, totalLaba: totalPenjualan - totalHpp,
+        rincianMetode: metodeMap,
+        produkTerjual: Object.keys(produkTerjual).map(n => ({ nama: n, qty: produkTerjual[n] })),
+        transaksi: list
       });
     }
 
@@ -476,13 +560,13 @@ module.exports = async (req, res) => {
 
     if (func === 'savePengaturan') {
       const data = body;
-      await supabase.from('pengaturan').upsert([{ 
-        id: 1, 
-        nama_toko: data.nama, 
-        alamat: data.alamat, 
-        telp: data.telp, 
-        footer: data.footer, 
-        logo_toko: data.logoToko, 
+      await supabase.from('pengaturan').upsert([{
+        id: 1,
+        nama_toko: data.nama,
+        alamat: data.alamat,
+        telp: data.telp,
+        footer: data.footer,
+        logo_toko: data.logoToko,
         logo_struk: data.logoStruk,
         qris_img: data.qrisImg,
         rek_bca: data.rekBca,
