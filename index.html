@@ -729,6 +729,16 @@
         document.getElementById('statProduk').innerText = d.totalProduk;
         document.getElementById('statStok').innerText = d.totalStok;
         document.getElementById('statLowStok').innerText = d.lowStok.length;
+document.getElementById('statLowStok').innerText = d.lowStok.length;
+document.getElementById('statHppPeriode').innerText = 'Rp ' + Number(d.hppPeriode || 0).toLocaleString('id-ID');
+document.getElementById('statLabaPeriode').innerText = 'Rp ' + Number(d.labaPeriode || 0).toLocaleString('id-ID');
+        <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 20px;">
+  <div class="stat-card"><div class="stat-title">Total Penjualan (Periode Ini)</div><div class="stat-value" id="riwayatTotalPenjualan">Rp 0</div></div>
+  <div class="stat-card"><div class="stat-title">Total HPP (Periode Ini)</div><div class="stat-value" id="riwayatTotalHpp">Rp 0</div></div>
+  <div class="stat-card"><div class="stat-title">Laba Kotor (Periode Ini)</div><div class="stat-value" id="riwayatTotalLaba">Rp 0</div></div>
+  <div class="stat-card"><div class="stat-title">Jumlah Transaksi</div><div class="stat-value" id="riwayatJumlahTrx">0</div></div>
+</div>
+        
         let lHtml = d.lowStok.map(function (item) { return '<div class="list-item"><span>' + esc(item.nama) + ' (' + esc(item.varian) + ')</span><span style="color:red; font-weight:bold;">' + esc(item.stok) + ' pcs</span></div>'; }).join('');
         if (d.lowStok.length === 0) lHtml = '<div style="color:#999; font-size:13px;">Stok aman</div>';
         document.getElementById('lowStockContainer').innerHTML = lHtml;
@@ -1605,6 +1615,10 @@
         btn.innerHTML = 'Bayar [Enter]';
         renderProduk(); renderKeranjang();
         showToast('Transaksi ' + res.idTrx + ' berhasil disimpan!');
+        callApi('getRiwayatTransaksi', { startDate: startDate, endDate: endDate }).then(function (d) {
+  let totalPenjualan = 0;
+  let totalHpp = 0;
+  d.forEach(function(r) { totalPenjualan += Number(r.total) || 0; totalHpp += Number(r.totalHpp) || 0; });
         if (document.getElementById('view-riwayat').classList.contains('active')) loadRiwayat();
         if (document.getElementById('view-dashboard').classList.contains('active')) loadDashboard();
         if (document.getElementById('view-produk').classList.contains('active')) loadTableProduk();
