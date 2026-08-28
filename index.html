@@ -744,42 +744,22 @@
 
     function resetDashFilterToday() { let todayStr = new Date().toISOString().split('T')[0]; document.getElementById('dashDateStart').value = todayStr; document.getElementById('dashDateEnd').value = todayStr; loadDashboard(); }
 
-  function loadRiwayat() {
-  let startDate = document.getElementById('riwayatDateStart').value;
-  let endDate = document.getElementById('riwayatDateEnd').value;
-  let t = document.getElementById('riwayatTrxTable');
-  t.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999; padding:20px;">Memuat riwayat...</td></tr>';
-  callApi('getRiwayatTransaksi', { startDate: startDate, endDate: endDate }).then(function (d) {
-    riwayatData = d || []; // BARU: simpan data global untuk cetak ulang struk
-    let totalPenjualan = 0;
-    d.forEach(function(r) { totalPenjualan += Number(r.total) || 0; });
-    document.getElementById('riwayatTotalPenjualan').innerText = 'Rp ' + totalPenjualan.toLocaleString('id-ID');
-    document.getElementById('riwayatJumlahTrx').innerText = d.length;
-    if (!d || d.length === 0) { t.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999; padding:20px;">Belum ada transaksi pada periode ini</td></tr>'; return; }
-    let html = '';
-    d.forEach(function (r, i) {
-      let dateStr = new Date(r.tgl).toLocaleString('id-ID');
-      let itemsTxt = r.items.join(', ');
-      html += '<tr style="border-bottom:1px solid #f5f5f5;"><td style="padding:12px; font-weight:500;">' + esc(r.id) + '</td><td style="padding:12px; color:var(--text-gray);">' + esc(dateStr) + '</td><td style="padding:12px;">' + esc(r.pelanggan) + '</td><td style="padding:12px; font-size:12px;">' + esc(itemsTxt) + '</td><td style="padding:12px; font-weight:600;">Rp ' + Number(r.total).toLocaleString('id-ID') + '</td><td style="padding:12px;">' + esc(r.metode) + '</td><td style="padding:12px;"><button onclick="cetakUlangStruk(' + i + ')" style="background:#0d6efd; color:#fff; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-size:12px;">🖨️ Cetak</button></td></tr>';
-    });
-    t.innerHTML = html;
-  }).catch(function(err) { t.innerHTML = '<tr><td colspan="7" style="text-align:center; color:red; padding:20px;">Error memuat riwayat: ' + esc(err.message) + '</td></tr>'; });
-}
+  function loadfunction cetakUlangStruk(i) {
+  const trx = (window.riwayatData || [])[i];
+  if (!trx) { alert('Data transaksi tidak ditemukan. Coba muat ulang halaman lalu buka menu Riwayat lagi.'); return; }
 
-function resetRiwayatFilterToday() { let todayStr = new Date().toISOString().split('T')[0]; document.getElementById('riwayatDateStart').value = todayStr; document.getElementById('riwayatDateEnd').value = todayStr; loadRiwayat(); }
-
-   function cetakUlangStruk(i) {
-  const trx = riwayatData[i];
-  if (!trx) { alert('Data transaksi tidak ditemukan'); return; }
-
-  // PENTING: buka window LANGSUNG saat klik (biar tidak diblokir popup blocker)
+  // Buka window LANGSUNG saat klik (agar tidak diblokir popup blocker)
   const w = window.open('', '_blank', 'width=380,height=640');
-  if (!w) { alert('Popup diblokir browser!\nIzinkan popup untuk situs ini di address bar.'); return; }
+  if (!w) { alert('Popup diblokir browser!\nIzinkan popup untuk situs ini (ikon di address bar).'); return; }
 
-  const rp = function (n) { return 'Rp ' + Number(n || 0).toLocaleString('id-ID'); };
-  const tglStr = new Date(trx.tgl).toLocaleString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  w.document.open();
+  w.document.write('<html><head><title>Memuat...</title></head><body style="font-family:Arial;text-align:center;padding-top:40px;">Memuat data toko...</body></html>');
+  w.document.close();
 
-  const tulis = function (p) {
+  callApi('getPengaturan').then(function (p) {
+    const rp = function (n) { return 'Rp ' + Number(n || 0).toLocaleString('id-ID'); };
+    const tglStr = new Date(trx.tgl).toLocaleString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
     const met = String(trx.metode || '');
     let rekTxt = '';
     if (met.indexOf('BCA') !== -1 && p[7]) rekTxt += '<div>BCA: ' + esc(p[7]) + '</div>';
@@ -831,20 +811,10 @@ function resetRiwayatFilterToday() { let todayStr = new Date().toISOString().spl
     w.document.close();
     w.focus();
     w.print();
-  };
-
-  // Kalau data toko sudah pernah diambil, langsung cetak
-  if (pengaturanCache) { tulis(pengaturanCache); return; }
-
-  // Kalau belum, tampilkan "Memuat..." dulu di window, baru fetch
-  w.document.open();
-  w.document.write('<html><head><title>Memuat...</title></head><body style="font-family:Arial;text-align:center;padding-top:40px;">Memuat data toko...</body></html>');
-  w.document.close();
-  callApi('getPengaturan').then(function (p) {
-    pengaturanCache = p;
-    tulis(p);
-  }).catch(function () {
-    tulis(['Toko', '', '', '', '', '', '', '', '', '', '']);
+  }).catch(function (e) {
+    w.document.open();
+    w.document.write('<html><body style="font-family:Arial;text-align:center;padding-top:40px;">Gagal memuat data toko: ' + esc(e.message) + '</body></html>');
+    w.document.close();
   });
 }
     
