@@ -37,29 +37,6 @@ function parseMetodeStr(metodeStr, fallbackTotal) {
   });
 }
 
-// ===== BARU: Helper tanggal WIB (UTC+7), supaya "hari ini" = hari ini jam Indonesia =====
-function wibDateStr(d) {
-  return new Date(new Date(d).getTime() + 7 * 3600 * 1000).toISOString().split('T')[0];
-}
-
-function getRangeWib(startDate, endDate) {
-  const todayStr = wibDateStr(Date.now());
-  const start = (startDate || todayStr) + 'T00:00:00+07:00';
-  const end = (endDate || startDate || todayStr) + 'T23:59:59.999+07:00';
-  return { start, end };
-}
-
-// ===== BARU: parse metode transaksi lama: "BCA (500000) + QRIS (250000)" =====
-function parseMetodeStr(metodeStr, fallbackTotal) {
-  if (!metodeStr) return [{ metode: 'Lainnya', jumlah: Number(fallbackTotal) || 0 }];
-  if (String(metodeStr).indexOf(' + ') === -1) return [{ metode: metodeStr, jumlah: Number(fallbackTotal) || 0 }];
-  return String(metodeStr).split(' + ').map(part => {
-    const m = part.trim().match(/^(.*?)\s*\(([\d.,]+)\)$/);
-    if (m) return { metode: m[1].trim(), jumlah: Number(String(m[2]).replace(/[.,]/g, '')) || 0 };
-    return { metode: part.trim(), jumlah: 0 };
-  });
-}
-
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
