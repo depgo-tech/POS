@@ -14,6 +14,29 @@ function hashPassword(plain) {
   return crypto.createHash('sha256').update(String(plain)).digest('hex');
 }
 
+// ===== BARU: Helper tanggal WIB (UTC+7) =====
+function wibDateStr(d) {
+  return new Date(new Date(d).getTime() + 7 * 3600 * 1000).toISOString().split('T')[0];
+}
+
+function getRangeWib(startDate, endDate) {
+  const todayStr = wibDateStr(Date.now());
+  const start = (startDate || todayStr) + 'T00:00:00+07:00';
+  const end = (endDate || startDate || todayStr) + 'T23:59:59.999+07:00';
+  return { start, end };
+}
+
+// ===== BARU: Parse metode dari transaksi lama, contoh: "BCA (500000) + QRIS (250000)" =====
+function parseMetodeStr(metodeStr, fallbackTotal) {
+  if (!metodeStr) return [{ metode: 'Lainnya', jumlah: Number(fallbackTotal) || 0 }];
+  if (String(metodeStr).indexOf(' + ') === -1) return [{ metode: metodeStr, jumlah: Number(fallbackTotal) || 0 }];
+  return String(metodeStr).split(' + ').map(part => {
+    const m = part.trim().match(/^(.*?)\s*\(([\d.,]+)\)$/);
+    if (m) return { metode: m[1].trim(), jumlah: Number(String(m[2]).replace(/[.,]/g, '')) || 0 };
+    return { metode: part.trim(), jumlah: 0 };
+  });
+}
+
 // ===== BARU: Helper tanggal WIB (UTC+7), supaya "hari ini" = hari ini jam Indonesia =====
 function wibDateStr(d) {
   return new Date(new Date(d).getTime() + 7 * 3600 * 1000).toISOString().split('T')[0];
@@ -78,11 +101,11 @@ module.exports = async (req, res) => {
       const data = body;
       if (!data.nama || data.harga === '' || data.harga === undefined) return res.status(400).json({ error: 'Nama dan Harga wajib diisi.' });
 
-      const payload = {
-        id: data.id, nama: data.nama, varian: data.varian, storage: data.storage,
-        harga: Number(data.harga), stok: 0,
+           const payload = {
+        id: data.id, nama: data.nama, varian: data.varian, storage: data.storage, 
+        harga: Number(data.harga), stok: 0, 
         kategori: data.kategori, foto: data.foto, imeis: [],
-        harga_modal: Number(data.hargaModal) || 0, // BARU
+        harga_modal: Number(data.hargaModal) || 0,
         is_konsinyasi: data.isKonsinyasi || false,
         mitra_id: data.isKonsinyasi ? data.mitraId : null,
         harga_setoran: data.isKonsinyasi ? (Number(data.hargaSetoran) || 0) : 0
@@ -409,7 +432,7 @@ module.exports = async (req, res) => {
       return res.json("Sukses");
     }
 
-    if (func === 'getRiwayatTransaksi') {
+       if (func === 'getRiwayatTransaksi') {
       const { startDate, endDate } = body;
       const { start, end } = getRangeWib(startDate, endDate);
       const { data } = await supabase.from('transaksi').select('*').gte('tgl', start).lte('tgl', end).order('tgl', { ascending: false });
@@ -417,8 +440,8 @@ module.exports = async (req, res) => {
         id: row.id, tgl: row.tgl, pelanggan: row.pelanggan,
         items: row.items ? row.items.split(', ') : [],
         total: row.total,
-        hpp: Number(row.hpp) || 0,                                          // BARU
-        laba: (Number(row.total) || 0) - (Number(row.hpp) || 0),            // BARU
+        hpp: Number(row.hpp) || 0,
+        laba: (Number(row.total) || 0) - (Number(row.hpp) || 0),
         metode: row.metode, diskon: row.diskon,
         tt_nama: row.tt_nama, tt_imei: row.tt_imei, tt_nilai: row.tt_nilai || 0
       }));
@@ -520,7 +543,59 @@ module.exports = async (req, res) => {
         transaksi: list
       });
     }
+    // ===== FUNGSI BARU: Laporan Harian (untuk cetak/report) =====
+    if (func === 'getLaporanHarian') {
+      const { startDate, endDate } = body;
+      const { start, end } = getRangeWib(startDate, endDate);
+      const todayStr = wibDateStr(Date.now());
 
+      const { data: trxData, error } = await supabase.from('transaksi')
+        .select('*').gte('tgl', start).lte('tgl', end).order('tgl', { ascending: true });
+      if (error) throw error;
+
+      let totalPenjualan = 0, totalHpp = 0;
+      let metodeMap = {};
+      let produkTerjual = {};
+      let list = [];
+
+      (trxData || []).forEach(row => {
+        const total = Number(row.total) || 0;
+        const hpp = Number(row.hpp) || 0;
+        totalPenjualan += total;
+        totalHpp += hpp;
+
+        let rincian = (Array.isArray(row.rincian_bayar) && row.rincian_bayar.length > 0)
+          ? row.rincian_bayar
+          : parseMetodeStr(row.metode, total);
+        rincian.forEach(r => {
+          const key = String(r.metode || 'Lainnya').trim();
+          metodeMap[key] = (metodeMap[key] || 0) + (Number(r.jumlah) || 0);
+        });
+
+        (row.items ? String(row.items).split(', ') : []).forEach(it => {
+          const m = it.match(/ x(\d+)$/);
+          const qty = m ? Number(m[1]) : 1;
+          const nama = it.replace(/ x\d+$/, '').replace(/ \[IMEI:.*?\]/, '').trim();
+          produkTerjual[nama] = (produkTerjual[nama] || 0) + qty;
+        });
+
+        list.push({
+          id: row.id, tgl: row.tgl, pelanggan: row.pelanggan,
+          items: row.items ? String(row.items).split(', ') : [],
+          total: total, hpp: hpp, laba: total - hpp,
+          metode: row.metode, diskon: row.diskon, tt_nilai: row.tt_nilai || 0
+        });
+      });
+
+      return res.json({
+        periode: { start: startDate || todayStr, end: endDate || startDate || todayStr },
+        jumlahTransaksi: list.length,
+        totalPenjualan, totalHpp, totalLaba: totalPenjualan - totalHpp,
+        rincianMetode: metodeMap,
+        produkTerjual: Object.keys(produkTerjual).map(n => ({ nama: n, qty: produkTerjual[n] })),
+        transaksi: list
+      });
+    }
     if (func === 'getUsers') {
       const { data } = await supabase.from('users').select('*');
       const mapped = (data || []).map(u => ({ id: u.id, username: u.username, full_name: u.full_name, role: u.role }));
