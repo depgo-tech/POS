@@ -488,61 +488,7 @@ module.exports = async (req, res) => {
       });
     }
 
-    // ===== BARU: Laporan harian (untuk cetak/report) =====
-    if (func === 'getLaporanHarian') {
-      const { startDate, endDate } = body;
-      const { start, end } = getRangeWib(startDate, endDate);
-      const todayStr = wibDateStr(Date.now());
-
-      const { data: trxData, error } = await supabase.from('transaksi')
-        .select('*').gte('tgl', start).lte('tgl', end).order('tgl', { ascending: true });
-      if (error) throw error;
-
-      let totalPenjualan = 0, totalHpp = 0;
-      let metodeMap = {};
-      let produkTerjual = {};
-      let list = [];
-
-      (trxData || []).forEach(row => {
-        const total = Number(row.total) || 0;
-        const hpp = Number(row.hpp) || 0;
-        totalPenjualan += total;
-        totalHpp += hpp;
-
-        // Rekap per metode: pakai rincian_bayar kalau ada, kalau tidak parse string metode lama
-        let rincian = (Array.isArray(row.rincian_bayar) && row.rincian_bayar.length > 0)
-          ? row.rincian_bayar
-          : parseMetodeStr(row.metode, total);
-        rincian.forEach(r => {
-          const key = String(r.metode || 'Lainnya').trim();
-          metodeMap[key] = (metodeMap[key] || 0) + (Number(r.jumlah) || 0);
-        });
-
-        // Best-effort rekap produk terjual dari teks items "Nama ... x2"
-        (row.items ? String(row.items).split(', ') : []).forEach(it => {
-          const m = it.match(/ x(\d+)$/);
-          const qty = m ? Number(m[1]) : 1;
-          const nama = it.replace(/ x\d+$/, '').replace(/ \[IMEI:.*?\]/, '').trim();
-          produkTerjual[nama] = (produkTerjual[nama] || 0) + qty;
-        });
-
-        list.push({
-          id: row.id, tgl: row.tgl, pelanggan: row.pelanggan,
-          items: row.items ? String(row.items).split(', ') : [],
-          total: total, hpp: hpp, laba: total - hpp,
-          metode: row.metode, diskon: row.diskon, tt_nilai: row.tt_nilai || 0
-        });
-      });
-
-      return res.json({
-        periode: { start: startDate || todayStr, end: endDate || startDate || todayStr },
-        jumlahTransaksi: list.length,
-        totalPenjualan, totalHpp, totalLaba: totalPenjualan - totalHpp,
-        rincianMetode: metodeMap,
-        produkTerjual: Object.keys(produkTerjual).map(n => ({ nama: n, qty: produkTerjual[n] })),
-        transaksi: list
-      });
-    }
+    
     // ===== FUNGSI BARU: Laporan Harian (untuk cetak/report) =====
     if (func === 'getLaporanHarian') {
       const { startDate, endDate } = body;
