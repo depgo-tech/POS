@@ -225,7 +225,8 @@
 
         <div id="view-produk" class="view" style="padding: 25px;">
           <div id="btnAddProdukContainer"></div>
-<div class="table-scroll"><table class="data-table"><thead><tr><th>Foto</th><th>Nama Produk</th><th>Varian</th><th>Storage</th><th>Kategori</th><th>Harga</th><th>Modal (HPP)</th><th>Stok Saat Ini</th><th>Aksi</th></tr></thead><tbody id="tableProduk"></tbody></table></div>        </div>
+          <div class="table-scroll"><table class="data-table"><thead><tr><th>Foto</th><th>Nama Produk</th><th>Varian</th><th>Storage</th><th>Kategori</th><th>Harga</th><th>Stok Saat Ini</th><th>Aksi</th></tr></thead><tbody id="tableProduk"></tbody></table></div>
+        </div>
 
         <div id="view-stok" class="view" style="padding: 25px;">
           <div class="dashboard-header">
@@ -363,8 +364,7 @@
       <div class="form-group"><label>Varian / Warna</label><input type="text" id="produkVarian"></div>
       <div class="form-group"><label>Storage (Opsional)</label><input type="text" id="produkStorage" placeholder="cth: 128GB"></div>
       <div class="form-group"><label>Kategori</label><select id="produkKategori"><option value="Handphone">Handphone</option><option value="Tablet">Tablet</option><option value="Aksesoris">Aksesoris</option><option value="Lainnya">Lainnya</option></select></div>
-      <div class="form-group"><label>Harga Jual (Rp)</label><input type="number" id="produkHarga"></div>
-      <div class="form-group"><label>HPP / Harga Modal (Rp)</label><input type="number" id="produkHpp" placeholder="0"></div>
+      <div class="form-group"><label>Harga (Rp)</label><input type="number" id="produkHarga"></div>
       
       <div class="kons-box">
         <div class="pay-row" style="margin-bottom: 5px;"><span>Produk Konsinyasi (Titip Jual)?</span><input type="checkbox" id="produkIsKonsinyasi" onchange="toggleKonsinyasiForm()"></div>
@@ -728,16 +728,6 @@
         document.getElementById('statProduk').innerText = d.totalProduk;
         document.getElementById('statStok').innerText = d.totalStok;
         document.getElementById('statLowStok').innerText = d.lowStok.length;
-document.getElementById('statLowStok').innerText = d.lowStok.length;
-document.getElementById('statHppPeriode').innerText = 'Rp ' + Number(d.hppPeriode || 0).toLocaleString('id-ID');
-document.getElementById('statLabaPeriode').innerText = 'Rp ' + Number(d.labaPeriode || 0).toLocaleString('id-ID');
-        <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 20px;">
-  <div class="stat-card"><div class="stat-title">Total Penjualan (Periode Ini)</div><div class="stat-value" id="riwayatTotalPenjualan">Rp 0</div></div>
-  <div class="stat-card"><div class="stat-title">Total HPP (Periode Ini)</div><div class="stat-value" id="riwayatTotalHpp">Rp 0</div></div>
-  <div class="stat-card"><div class="stat-title">Laba Kotor (Periode Ini)</div><div class="stat-value" id="riwayatTotalLaba">Rp 0</div></div>
-  <div class="stat-card"><div class="stat-title">Jumlah Transaksi</div><div class="stat-value" id="riwayatJumlahTrx">0</div></div>
-</div>
-        
         let lHtml = d.lowStok.map(function (item) { return '<div class="list-item"><span>' + esc(item.nama) + ' (' + esc(item.varian) + ')</span><span style="color:red; font-weight:bold;">' + esc(item.stok) + ' pcs</span></div>'; }).join('');
         if (d.lowStok.length === 0) lHtml = '<div style="color:#999; font-size:13px;">Stok aman</div>';
         document.getElementById('lowStockContainer').innerHTML = lHtml;
@@ -827,11 +817,10 @@ document.getElementById('statLabaPeriode').innerText = 'Rp ' + Number(d.labaPeri
       }).catch(function(err) { t.innerHTML = '<tr><td colspan="7" style="text-align:center; color:red; padding:20px;">Error: ' + esc(err.message) + '</td></tr>'; });
     }
 
-        function openStokModal(type) {
+    function openStokModal(type) {
       modalStokContext = type;
       let prodSelect = document.getElementById('stokProdukId');
-      // PERBAIKAN: Menambahkan p[3] (Storage) ke dalam teks dropdown
-      prodSelect.innerHTML = allProduk.map(p => `<option value="${p[0]}">${esc(p[1])} ${esc(p[2])} ${p[3] ? esc(p[3]) : ''} (Stok: ${p[5]})</option>`).join('');
+      prodSelect.innerHTML = allProduk.map(p => `<option value="${p[0]}">${esc(p[1])} ${esc(p[2])} (Stok: ${p[5]})</option>`).join('');
       
       document.getElementById('modalStokTitle').innerText = type === 'masuk' ? 'Stok Masuk (Restock)' : 'Stok Keluar (Rusak/Hilang)';
       document.getElementById('stokJumlah').value = 1;
@@ -1017,11 +1006,10 @@ document.getElementById('statLabaPeriode').innerText = 'Rp ' + Number(d.labaPeri
       });
     }
 
-        function openKonsinyasiKeluarModal() {
+    function openKonsinyasiKeluarModal() {
       keranjangKonsinyasi = [];
       document.getElementById('kkMitraId').innerHTML = allMitra.map(m => `<option value="${m.id}">${esc(m.nama)}</option>`).join('');
-      // PERBAIKAN: Menambahkan p[3] (Storage) ke dalam teks dropdown
-      document.getElementById('kkProdukId').innerHTML = allProduk.map(p => `<option value="${p[0]}">${esc(p[1])} ${esc(p[2])} ${p[3] ? esc(p[3]) : ''}</option>`).join('');
+      document.getElementById('kkProdukId').innerHTML = allProduk.map(p => `<option value="${p[0]}">${esc(p[1])} ${esc(p[2])}</option>`).join('');
       document.getElementById('kkQty').value = 1;
       document.getElementById('kkHargaSetoran').value = '';
       updateKonsinyasiImeiOptions();
@@ -1140,24 +1128,23 @@ document.getElementById('statLabaPeriode').innerText = 'Rp ' + Number(d.labaPeri
 
     function getBase64Image(previewId) { let img = document.getElementById(previewId); return (img.style.display === 'block') ? img.src : ''; }
 
-   function loadTableProduk() {
-  let addBtnContainer = document.getElementById('btnAddProdukContainer');
-  if (currentUser.role === 'admin') { addBtnContainer.innerHTML = '<button class="btn-add" onclick="openProdukModal()">+ Tambah Produk</button>'; } else { addBtnContainer.innerHTML = ''; }
-  let tbody = document.getElementById('tableProduk');
-  let rows = allProduk.map(function (p) {
-    let imgSrc = p[7] ? p[7] : 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2245%22 height=%2245%22><rect width=%22100%25%22 height=%22100%25%22 fill=%22%23eee%22/><text x=%2250%25%22 y=%2250%25%22 font-size=%228%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22>No Img</text></svg>';
-    let actions = '';
-    if (currentUser.role === 'admin') { actions = '<button class="btn-action" onclick="openProdukModal(\'' + esc(p[0]) + '\')">Edit</button><button class="btn-action danger" onclick="confirmDelete(\'' + esc(p[0]) + '\', \'produk\')">Hapus</button>'; }
-    else { actions = '<span style="color:#999; font-size:11px;">Read Only</span>'; }
-    let stokDisplay = p[8] && p[8].length > 0 ? p[8].length + ' IMEI' : p[5];
-    let konsBadge = p[9] ? ' <span style="color:blue; font-size:10px;">[Konsinyasi]</span>' : '';
-    let hppDisplay = currentUser.role === 'admin' ? 'Rp ' + Number(p[12] || 0).toLocaleString('id-ID') : '-';
-    return '<tr><td><img src="' + esc(imgSrc) + '" loading="lazy"></td><td>' + esc(p[1]) + konsBadge + '</td><td>' + esc(p[2]) + '</td><td>' + esc(p[3]) + '</td><td>' + esc(p[6]) + '</td><td>Rp ' + Number(p[4]).toLocaleString('id-ID') + '</td><td>' + hppDisplay + '</td><td>' + esc(stokDisplay) + '</td><td>' + actions + '</td></tr>';
-  });
-  tbody.innerHTML = rows.join('');
-}
+    function loadTableProduk() {
+      let addBtnContainer = document.getElementById('btnAddProdukContainer');
+      if (currentUser.role === 'admin') { addBtnContainer.innerHTML = '<button class="btn-add" onclick="openProdukModal()">+ Tambah Produk</button>'; } else { addBtnContainer.innerHTML = ''; }
+      let tbody = document.getElementById('tableProduk');
+      let rows = allProduk.map(function (p) {
+        let imgSrc = p[7] ? p[7] : 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2245%22 height=%2245%22><rect width=%22100%25%22 height=%22100%25%22 fill=%22%23eee%22/><text x=%2250%25%22 y=%2250%25%22 font-size=%228%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22>No Img</text></svg>';
+        let actions = '';
+        if (currentUser.role === 'admin') { actions = '<button class="btn-action" onclick="openProdukModal(\'' + esc(p[0]) + '\')">Edit</button><button class="btn-action danger" onclick="confirmDelete(\'' + esc(p[0]) + '\', \'produk\')">Hapus</button>'; }
+        else { actions = '<span style="color:#999; font-size:11px;">Read Only</span>'; }
+        let stokDisplay = p[8] && p[8].length > 0 ? p[8].length + ' IMEI' : p[5];
+        let konsBadge = p[9] ? ' <span style="color:blue; font-size:10px;">[Konsinyasi]</span>' : '';
+        return '<tr><td><img src="' + esc(imgSrc) + '" loading="lazy"></td><td>' + esc(p[1]) + konsBadge + '</td><td>' + esc(p[2]) + '</td><td>' + esc(p[3]) + '</td><td>' + esc(p[6]) + '</td><td>Rp ' + Number(p[4]).toLocaleString('id-ID') + '</td><td>' + esc(stokDisplay) + '</td><td>' + actions + '</td></tr>';
+      });
+      tbody.innerHTML = rows.join('');
+    }
 
-        function openProdukModal(id) {
+    function openProdukModal(id) {
       if (currentUser.role !== 'admin') return;
       document.getElementById('produkId').value = '';
       document.getElementById('produkBarcode').value = '';
@@ -1166,7 +1153,6 @@ document.getElementById('statLabaPeriode').innerText = 'Rp ' + Number(d.labaPeri
       document.getElementById('produkVarian').value = '';
       document.getElementById('produkStorage').value = '';
       document.getElementById('produkHarga').value = '';
-      document.getElementById('produkHpp').value = ''; /* TAMBAHAN HPP */
       document.getElementById('produkFotoFile').value = '';
       document.getElementById('previewProdukFoto').style.display = 'none';
       document.getElementById('produkIsKonsinyasi').checked = false;
@@ -1190,7 +1176,6 @@ document.getElementById('statLabaPeriode').innerText = 'Rp ' + Number(d.labaPeri
           document.getElementById('produkVarian').value = p[2];
           document.getElementById('produkStorage').value = p[3];
           document.getElementById('produkHarga').value = p[4];
-          document.getElementById('produkHpp').value = p[12] || ''; /* TAMBAHAN HPP */
           document.getElementById('produkKategori').value = p[6];
           if (p[7]) { document.getElementById('previewProdukFoto').src = p[7]; document.getElementById('previewProdukFoto').style.display = 'block'; }
           if (p[9]) {
@@ -1211,7 +1196,7 @@ document.getElementById('statLabaPeriode').innerText = 'Rp ' + Number(d.labaPeri
       else area.classList.add('hidden');
     }
 
-        function saveProduk() {
+    function saveProduk() {
       let btn = document.getElementById('btnSaveProduk');
       let barcodeInput = document.getElementById('produkBarcode').value.trim();
       let data = {
@@ -1221,7 +1206,6 @@ document.getElementById('statLabaPeriode').innerText = 'Rp ' + Number(d.labaPeri
         storage: document.getElementById('produkStorage').value.trim(),
         kategori: document.getElementById('produkKategori').value,
         harga: document.getElementById('produkHarga').value,
-        hpp: document.getElementById('produkHpp').value || 0, /* TAMBAHAN HPP */
         foto: getBase64Image('previewProdukFoto'),
         isKonsinyasi: document.getElementById('produkIsKonsinyasi').checked,
         mitraId: document.getElementById('produkMitraId').value,
@@ -1243,6 +1227,7 @@ document.getElementById('statLabaPeriode').innerText = 'Rp ' + Number(d.labaPeri
         btn.innerText = 'Simpan Produk'; btn.disabled = false;
       });
     }
+
     function renderKategori() {
       let c = document.getElementById('catContainer');
       c.innerHTML = '';
@@ -1355,13 +1340,8 @@ document.getElementById('statLabaPeriode').innerText = 'Rp ' + Number(d.labaPeri
       document.getElementById('modalVariant').style.display = 'flex';
     }
 
-        function openImeiModal(variantData) {
-      // PERBAIKAN: Menggabungkan Nama, Varian, dan Storage di Judul
-      let titleText = 'Pilih IMEI ' + variantData[1];
-      if (variantData[2]) titleText += ' ' + variantData[2];
-      if (variantData[3]) titleText += ' ' + variantData[3];
-      document.getElementById('modalImeiTitle').innerText = titleText;
-      
+    function openImeiModal(variantData) {
+      document.getElementById('modalImeiTitle').innerText = 'Pilih IMEI ' + variantData[1];
       let list = document.getElementById('imeiList');
       list.innerHTML = '';
       let imeis = variantData[8].filter(im => im.status === 'tersedia');
@@ -1615,10 +1595,6 @@ document.getElementById('statLabaPeriode').innerText = 'Rp ' + Number(d.labaPeri
         btn.innerHTML = 'Bayar [Enter]';
         renderProduk(); renderKeranjang();
         showToast('Transaksi ' + res.idTrx + ' berhasil disimpan!');
-        callApi('getRiwayatTransaksi', { startDate: startDate, endDate: endDate }).then(function (d) {
-  let totalPenjualan = 0;
-  let totalHpp = 0;
-  d.forEach(function(r) { totalPenjualan += Number(r.total) || 0; totalHpp += Number(r.totalHpp) || 0; });
         if (document.getElementById('view-riwayat').classList.contains('active')) loadRiwayat();
         if (document.getElementById('view-dashboard').classList.contains('active')) loadDashboard();
         if (document.getElementById('view-produk').classList.contains('active')) loadTableProduk();
