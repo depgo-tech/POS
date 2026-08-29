@@ -21,11 +21,10 @@ function wibDateStr(d) {
 
 function getRangeWib(startDate, endDate) {
   const todayStr = wibDateStr(Date.now());
-  const start = (startDate || todayStr) + 'T00:00:00+07:00';
-  const end = (endDate || startDate || todayStr) + 'T23:59:59.999+07:00';
-  return { start, end };
+  const startIso = new Date((startDate || todayStr) + 'T00:00:00+07:00').toISOString();
+  const endIso = new Date((endDate || startDate || todayStr) + 'T23:59:59.999+07:00').toISOString();
+  return { start: startIso, end: endIso };
 }
-
 // ===== BARU: Parse metode dari transaksi lama, contoh: "BCA (500000) + QRIS (250000)" =====
 function parseMetodeStr(metodeStr, fallbackTotal) {
   if (!metodeStr) return [{ metode: 'Lainnya', jumlah: Number(fallbackTotal) || 0 }];
@@ -141,8 +140,8 @@ module.exports = async (req, res) => {
       let nilaiTukar = Number(ttNilai) || 0;
       let totalAkhir = total - diskonRp - nilaiTukar;
       let tgl = new Date().toISOString();
-      let idTrx = 'INV' + tgl.replace(/[-:T]/g, '').split('.')[0];
-
+      let idTrx = 'INV' + tgl.replace(/[-:T]/g, '').split('.')[0] + Math.floor(Math.random() * 90 + 10);
+      
       let metodeBayarFinal = metode;
       // BARU: simpan rincian pembayaran terstruktur (untuk rekap per metode di laporan)
       let rincianBayar = [{ metode: metode, jumlah: totalAkhir }];
@@ -151,13 +150,14 @@ module.exports = async (req, res) => {
         rincianBayar = splitPayments.map(p => ({ metode: p.metode, jumlah: Number(p.jumlah) || 0 }));
       }
 
-      await supabase.from('transaksi').insert([{
+            const { error: trxErr } = await supabase.from('transaksi').insert([{
         id: idTrx, tgl: tgl, pelanggan: pelanggan, items: itemsArr.join(', '),
         total: totalAkhir, hpp: hppTotal, metode: metodeBayarFinal, diskon: diskonStr,
         rincian_bayar: rincianBayar,
         tt_nama: ttNama || null, tt_imei: ttImei || null, tt_nilai: nilaiTukar
       }]);
-
+      if (trxErr) return res.status(500).json({ error: 'Gagal simpan transaksi: ' + trxErr.message });
+      
       let updatePromises = [];
       let mitraHutangMap = {};
 
@@ -417,10 +417,11 @@ module.exports = async (req, res) => {
       return res.json("Sukses");
     }
 
-       if (func === 'getRiwayatTransaksi') {
+    if (func === 'getRiwayatTransaksi') {
       const { startDate, endDate } = body;
       const { start, end } = getRangeWib(startDate, endDate);
-      const { data } = await supabase.from('transaksi').select('*').gte('tgl', start).lte('tgl', end).order('tgl', { ascending: false });
+      const { data, error: errTrx } = await supabase.from('transaksi').select('*').gte('tgl', start).lte('tgl', end).order('tgl', { ascending: false });
+      if (errTrx) return res.status(500).json({ error: errTrx.message });
       const mapped = (data || []).map(row => ({
         id: row.id, tgl: row.tgl, pelanggan: row.pelanggan,
         items: row.items ? row.items.split(', ') : [],
