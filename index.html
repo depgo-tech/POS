@@ -172,7 +172,9 @@
             </div>
           </div>
           <div class="stats-grid">
-            <div class="stat-card"><div class="stat-title">Penjualan (Periode Ini)</div><div class="stat-value" id="statPeriode">Rp 0</div></div>
+                        <div class="stat-card"><div class="stat-title">Penjualan (Periode Ini)</div><div class="stat-value" id="statPeriode">Rp 0</div></div>
+            <div class="stat-card"><div class="stat-title">HPP (Periode Ini)</div><div class="stat-value" id="statHppPeriode">Rp 0</div></div>
+            <div class="stat-card"><div class="stat-title">Laba Kotor (Periode Ini)</div><div class="stat-value" id="statLabaPeriode">Rp 0</div></div>
             <div class="stat-card"><div class="stat-title">Transaksi (Periode Ini)</div><div class="stat-value" id="statTrxPeriode">0</div></div>
             <div class="stat-card"><div class="stat-title">Total Transaksi (Sepanjang Waktu)</div><div class="stat-value" id="statTrx">0</div></div>
             <div class="stat-card"><div class="stat-title">Total Produk</div><div class="stat-value" id="statProduk">0</div></div>
@@ -211,8 +213,27 @@
 
                 <div class="pay-row"><span>Pilih Garansi</span><select id="masaGaransi"><option value="0">Tidak Bergaransi</option><option value="1">1 Bulan (Toko)</option><option value="3">3 Bulan (Toko)</option><option value="6">6 Bulan (Toko)</option><option value="12">12 Bulan (Distributor)</option><option value="24">24 Bulan (Ibox)</option></select></div>
                 
-                <div class="pay-row"><span>Metode Bayar</span><select id="metodeBayar"><option value="Cash">Cash</option><option value="QRIS">QRIS</option><option value="Transfer BCA">Transfer BCA</option><option value="Transfer Mandiri">Transfer Mandiri</option><option value="GoPay">GoPay</option><option value="DANA">DANA</option></select></div>
-                <div class="pay-row"><span>Split Payment?</span><input type="checkbox" id="useSplitPayment" onchange="toggleSplitPayment()"></div>
+                <div class="pay-row"><span>Metode Bayar</span><select id="metodeBayar" onchange="toggleCicilanInput()">
+                  <option value="Cash">Cash</option>
+                  <option value="QRIS">QRIS</option>
+                  <option value="Transfer BCA">Transfer BCA</option>
+                  <option value="Transfer Mandiri">Transfer Mandiri</option>
+                  <option value="Transfer BRI">Transfer BRI</option>
+                  <option value="Transfer BNI">Transfer BNI</option>
+                  <option value="Transfer CIMB Niaga">Transfer CIMB Niaga</option>
+                  <option value="Transfer Permata">Transfer Permata</option>
+                  <option value="Transfer BSI">Transfer BSI</option>
+                  <option value="Transfer Danamon">Transfer Danamon</option>
+                  <option value="Transfer BTN">Transfer BTN</option>
+                  <option value="Transfer OCBC">Transfer OCBC</option>
+                  <option value="GoPay">GoPay</option>
+                  <option value="DANA">DANA</option>
+                  <option value="OVO">OVO</option>
+                  <option value="ShopeePay">ShopeePay</option>
+                  <option value="LinkAja">LinkAja</option>
+                  <option value="Cicilan">Cicilan</option>
+                </select></div>
+                <div class="pay-row hidden" id="cicilanArea"><input type="text" id="namaCicilan" placeholder="Nama Cicilan (cth: Kredivo, Akulaku)" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;"></div>                <div class="pay-row"><span>Split Payment?</span><input type="checkbox" id="useSplitPayment" onchange="toggleSplitPayment()"></div>
                 <div id="splitPaymentArea" class="hidden" style="margin-bottom:10px;"></div>
 
                 <div class="grand-total"><span>Total</span><span id="totalBayar">Rp 0</span></div>
@@ -251,16 +272,18 @@
               <div style="display:flex; flex-direction:column; gap:3px;"><label style="font-size:11px; color:var(--text-gray); font-weight:600;">Dari</label><input type="date" id="riwayatDateStart" class="date-picker" onchange="loadRiwayat()"></div>
               <div style="display:flex; flex-direction:column; gap:3px;"><label style="font-size:11px; color:var(--text-gray); font-weight:600;">Sampai</label><input type="date" id="riwayatDateEnd" class="date-picker" onchange="loadRiwayat()"></div>
               <button class="btn-action" style="align-self:flex-end; height:42px;" onclick="resetRiwayatFilterToday()">Hari Ini</button>
-            </div>
+              <button class="btn-add" style="margin:0; align-self:flex-end; height:42px;" onclick="cetakLaporanHarian()">🖨️ Cetak Laporan</button>            </div>
           </div>
           <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 20px;">
             <div class="stat-card"><div class="stat-title">Total Penjualan (Periode Ini)</div><div class="stat-value" id="riwayatTotalPenjualan">Rp 0</div></div>
+            <div class="stat-card"><div class="stat-title">Total HPP (Periode Ini)</div><div class="stat-value" id="riwayatTotalHpp">Rp 0</div></div>
+            <div class="stat-card"><div class="stat-title">Laba Kotor (Periode Ini)</div><div class="stat-value" id="riwayatTotalLaba">Rp 0</div></div>
             <div class="stat-card"><div class="stat-title">Jumlah Transaksi</div><div class="stat-value" id="riwayatJumlahTrx">0</div></div>
           </div>
           <div class="data-table table-scroll">
             <table style="width: 100%; border-collapse: collapse; min-width: 640px;">
-              <thead><tr><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Invoice</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Tanggal</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Customer</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Items</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Total</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Bayar</th></tr></thead>
-              <tbody id="riwayatTrxTable" style="vertical-align: top;"><tr><td colspan="6" style="text-align:center; color:#999; padding:20px;">Memuat riwayat...</td></tr></tbody>
+              <thead><tr><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Invoice</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Tanggal</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Customer</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Items</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Total</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Bayar</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Aksi</th></tr></thead>
+              <tbody id="riwayatTrxTable" style="vertical-align: top;"><tr><td colspan="7" style="text-align:center; color:#999; padding:20px;">Memuat riwayat...</td></tr></tbody>              <tbody id="riwayatTrxTable" style="vertical-align: top;"><tr><td colspan="6" style="text-align:center; color:#999; padding:20px;">Memuat riwayat...</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -724,6 +747,8 @@
       let endDate = document.getElementById('dashDateEnd').value;
       callApi('getDashboardData', { startDate: startDate, endDate: endDate }).then(function (d) {
         document.getElementById('statPeriode').innerText = 'Rp ' + Number(d.penjualanPeriode).toLocaleString('id-ID');
+        document.getElementById('statHppPeriode').innerText = 'Rp ' + Number(d.hppPeriode).toLocaleString('id-ID');
+        document.getElementById('statLabaPeriode').innerText = 'Rp ' + Number(d.labaPeriode).toLocaleString('id-ID');
         document.getElementById('statTrxPeriode').innerText = d.trxPeriode;
         document.getElementById('statTrx').innerText = d.totalTrx;
         document.getElementById('statProduk').innerText = d.totalProduk;
@@ -740,25 +765,83 @@
 
     function resetDashFilterToday() { let todayStr = new Date().toISOString().split('T')[0]; document.getElementById('dashDateStart').value = todayStr; document.getElementById('dashDateEnd').value = todayStr; loadDashboard(); }
 
+        let allRiwayatData = [];
     function loadRiwayat() {
       let startDate = document.getElementById('riwayatDateStart').value;
       let endDate = document.getElementById('riwayatDateEnd').value;
       let t = document.getElementById('riwayatTrxTable');
-      t.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999; padding:20px;">Memuat riwayat...</td></tr>';
+      t.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999; padding:20px;">Memuat riwayat...</td></tr>';
       callApi('getRiwayatTransaksi', { startDate: startDate, endDate: endDate }).then(function (d) {
-        let totalPenjualan = 0;
-        d.forEach(function(r) { totalPenjualan += Number(r.total) || 0; });
+        allRiwayatData = d || [];
+        let totalPenjualan = 0, totalHpp = 0;
+        d.forEach(function(r) { totalPenjualan += Number(r.total) || 0; totalHpp += Number(r.hpp) || 0; });
         document.getElementById('riwayatTotalPenjualan').innerText = 'Rp ' + totalPenjualan.toLocaleString('id-ID');
+        document.getElementById('riwayatTotalHpp').innerText = 'Rp ' + totalHpp.toLocaleString('id-ID');
+        document.getElementById('riwayatTotalLaba').innerText = 'Rp ' + (totalPenjualan - totalHpp).toLocaleString('id-ID');
         document.getElementById('riwayatJumlahTrx').innerText = d.length;
-        if (!d || d.length === 0) { t.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#999; padding:20px;">Belum ada transaksi pada periode ini</td></tr>'; return; }
+        if (!d || d.length === 0) { t.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999; padding:20px;">Belum ada transaksi pada periode ini</td></tr>'; return; }
         let html = '';
-        d.forEach(function (r) {
+        d.forEach(function (r, idx) {
           let dateStr = new Date(r.tgl).toLocaleString('id-ID');
           let itemsTxt = r.items.join(', ');
-          html += '<tr style="border-bottom:1px solid #f5f5f5;"><td style="padding:12px; font-weight:500;">' + esc(r.id) + '</td><td style="padding:12px; color:var(--text-gray);">' + esc(dateStr) + '</td><td style="padding:12px;">' + esc(r.pelanggan) + '</td><td style="padding:12px; font-size:12px;">' + esc(itemsTxt) + '</td><td style="padding:12px; font-weight:600;">Rp ' + Number(r.total).toLocaleString('id-ID') + '</td><td style="padding:12px;">' + esc(r.metode) + '</td></tr>';
+          html += '<tr style="border-bottom:1px solid #f5f5f5;"><td style="padding:12px; font-weight:500;">' + esc(r.id) + '</td><td style="padding:12px; color:var(--text-gray);">' + esc(dateStr) + '</td><td style="padding:12px;">' + esc(r.pelanggan) + '</td><td style="padding:12px; font-size:12px;">' + esc(itemsTxt) + '</td><td style="padding:12px; font-weight:600;">Rp ' + Number(r.total).toLocaleString('id-ID') + '</td><td style="padding:12px;">' + esc(r.metode) + '</td><td style="padding:12px;"><button class="btn-action" onclick="cetakUlangStruk(' + idx + ')">Cetak</button></td></tr>';
         });
         t.innerHTML = html;
-      }).catch(function(err) { t.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red; padding:20px;">Error memuat riwayat: ' + esc(err.message) + '</td></tr>'; });
+      }).catch(function(err) { t.innerHTML = '<tr><td colspan="7" style="text-align:center; color:red; padding:20px;">Error memuat riwayat: ' + esc(err.message) + '</td></tr>'; });
+    }
+
+    function cetakUlangStruk(idx) {
+      let r = allRiwayatData[idx];
+      if (!r) return;
+      let itemsHtml = r.items.map(function(it) { return '<div class="struk-item"><span>' + esc(it) + '</span></div>'; }).join('');
+      let logoStrukHtml = (currentSettings[5]) ? '<img src="' + currentSettings[5] + '" class="struk-logo">' : '';
+      let footerText = (currentSettings[3]) ? currentSettings[3] : 'Terima kasih telah berbelanja!';
+      let tglStr = new Date(r.tgl).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + new Date(r.tgl).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      let ttHtml = (r.tt_nilai > 0) ? '<div class="t-row"><span>Tukar Tambah (' + esc(r.tt_nama || '-') + ')</span><span>- Rp ' + Number(r.tt_nilai).toLocaleString('id-ID') + '</span></div>' : '';
+      let strukHtml = logoStrukHtml;
+      strukHtml += '<h3>' + esc(currentSettings[0] || 'Toko') + '</h3>';
+      strukHtml += '<p>' + esc(currentSettings[1] || '') + '</p>';
+      strukHtml += '<p>' + esc(currentSettings[2] || '') + '</p>';
+      strukHtml += '<div class="struk-divider"></div>';
+      strukHtml += '<div style="text-align:left; font-size:11px; margin-bottom:10px;">';
+      strukHtml += '<div style="display:flex; justify-content:space-between;"><span>No</span><span>' + esc(r.id) + ' (Cetak Ulang)</span></div>';
+      strukHtml += '<div style="display:flex; justify-content:space-between;"><span>Tgl</span><span>' + esc(tglStr) + '</span></div>';
+      strukHtml += '<div style="display:flex; justify-content:space-between;"><span>Pelanggan</span><span>' + esc(r.pelanggan) + '</span></div>';
+      strukHtml += '</div><div class="struk-divider"></div>' + itemsHtml + '<div class="struk-divider"></div>';
+      strukHtml += '<div class="struk-total">';
+      strukHtml += '<div class="t-row"><span>Diskon (' + esc(r.diskon || 0) + ')</span></div>';
+      strukHtml += ttHtml;
+      strukHtml += '<div class="t-row t-bold"><span>Total</span><span>Rp ' + Number(r.total).toLocaleString('id-ID') + '</span></div>';
+      strukHtml += '<div class="t-row"><span>Bayar</span><span>' + esc(r.metode) + '</span></div>';
+      strukHtml += '</div><div class="struk-divider"></div>';
+      strukHtml += '<p style="margin-top:10px; font-weight:bold;">' + esc(footerText) + '</p>';
+      document.getElementById('strukArea').innerHTML = strukHtml;
+      document.getElementById('modalStruk').style.display = 'flex';
+    }
+
+    function cetakLaporanHarian() {
+      let startDate = document.getElementById('riwayatDateStart').value;
+      let endDate = document.getElementById('riwayatDateEnd').value;
+      callApi('getLaporanHarian', { startDate: startDate, endDate: endDate }).then(function(d) {
+        let metodeHtml = '';
+        for (let m in d.rincianMetode) {
+          metodeHtml += '<div class="t-row"><span>' + esc(m) + '</span><span>Rp ' + Number(d.rincianMetode[m]).toLocaleString('id-ID') + '</span></div>';
+        }
+        let strukHtml = '<h3>' + esc(currentSettings[0] || 'Toko') + '</h3>';
+        strukHtml += '<p>Laporan Penjualan</p>';
+        strukHtml += '<p>' + esc(d.periode.start) + ' s/d ' + esc(d.periode.end) + '</p>';
+        strukHtml += '<div class="struk-divider"></div>';
+        strukHtml += '<div class="struk-total">';
+        strukHtml += '<div class="t-row"><span>Jumlah Transaksi</span><span>' + d.jumlahTransaksi + '</span></div>';
+        strukHtml += '<div class="t-row"><span>Total Penjualan</span><span>Rp ' + Number(d.totalPenjualan).toLocaleString('id-ID') + '</span></div>';
+        strukHtml += '<div class="t-row"><span>Total HPP</span><span>Rp ' + Number(d.totalHpp).toLocaleString('id-ID') + '</span></div>';
+        strukHtml += '<div class="t-row t-bold"><span>Laba Kotor</span><span>Rp ' + Number(d.totalLaba).toLocaleString('id-ID') + '</span></div>';
+        strukHtml += '</div><div class="struk-divider"></div>';
+        strukHtml += '<p style="font-weight:bold; margin-bottom:5px;">Rincian per Metode:</p>' + metodeHtml;
+        strukHtml += '<div class="struk-divider"></div>';
+        document.getElementById('strukArea').innerHTML = strukHtml;
+        document.getElementById('modalStruk').style.display = 'flex';
+      }).catch(function(err) { showToast('Gagal memuat laporan: ' + (err && err.message ? err.message : ''), true); });
     }
 
     function resetRiwayatFilterToday() { let todayStr = new Date().toISOString().split('T')[0]; document.getElementById('riwayatDateStart').value = todayStr; document.getElementById('riwayatDateEnd').value = todayStr; loadRiwayat(); }
@@ -1425,6 +1508,12 @@
       hitungTotal();
     }
 
+        function toggleCicilanInput() {
+      let sel = document.getElementById('metodeBayar').value;
+      let area = document.getElementById('cicilanArea');
+      if (sel === 'Cicilan') { area.classList.remove('hidden'); } else { area.classList.add('hidden'); document.getElementById('namaCicilan').value = ''; }
+    }
+
     function toggleSplitPayment() {
       let cb = document.getElementById('useSplitPayment');
       let area = document.getElementById('splitPaymentArea');
@@ -1508,7 +1597,10 @@
       btn.innerHTML = '<div class="spinner-white"></div> Memproses...';
       let pel = document.getElementById('namaPelanggan').value.trim() || 'Umum';
       let metode = document.getElementById('metodeBayar').value;
-      let calc = hitungTotal();
+      if (metode === 'Cicilan') {
+        let namaCicilan = document.getElementById('namaCicilan').value.trim();
+        if (namaCicilan) metode = 'Cicilan - ' + namaCicilan;
+      }      let calc = hitungTotal();
       let keranjangToSave = JSON.parse(JSON.stringify(keranjang));
       
       let splitPayData = [];
