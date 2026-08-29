@@ -171,12 +171,13 @@
               <button class="btn-action" style="align-self:flex-end; height:42px;" onclick="resetDashFilterToday()">Hari Ini</button>
             </div>
           </div>
-                    <div class="stats-grid">
+          <div class="stats-grid">
             <div class="stat-card"><div class="stat-title">Penjualan (Periode Ini)</div><div class="stat-value" id="statPeriode">Rp 0</div></div>
-            <div class="stat-card"><div class="stat-title">Total Modal (HPP)</div><div class="stat-value" id="statHpp" style="color:#dc3545;">Rp 0</div></div>
-            <div class="stat-card"><div class="stat-title">Estimasi Laba Kotor</div><div class="stat-value" id="statLaba" style="color:#1a3a0a;">Rp 0</div></div>
             <div class="stat-card"><div class="stat-title">Transaksi (Periode Ini)</div><div class="stat-value" id="statTrxPeriode">0</div></div>
-            
+            <div class="stat-card"><div class="stat-title">Total Transaksi (Sepanjang Waktu)</div><div class="stat-value" id="statTrx">0</div></div>
+            <div class="stat-card"><div class="stat-title">Total Produk</div><div class="stat-value" id="statProduk">0</div></div>
+            <div class="stat-card"><div class="stat-title">Total Stok</div><div class="stat-value" id="statStok">0</div></div>
+            <div class="stat-card"><div class="stat-title">Stok Hampir Habis</div><div class="stat-value" id="statLowStok">0</div></div>
           </div>
           <div class="dash-grid">
             <div class="chart-container"><h4 style="margin-bottom: 15px; font-size: 15px;">Grafik Penjualan (7 Hari)</h4><canvas id="salesChart"></canvas></div>
@@ -363,7 +364,8 @@
       <div class="form-group"><label>Varian / Warna</label><input type="text" id="produkVarian"></div>
       <div class="form-group"><label>Storage (Opsional)</label><input type="text" id="produkStorage" placeholder="cth: 128GB"></div>
       <div class="form-group"><label>Kategori</label><select id="produkKategori"><option value="Handphone">Handphone</option><option value="Tablet">Tablet</option><option value="Aksesoris">Aksesoris</option><option value="Lainnya">Lainnya</option></select></div>
-      <div class="form-group"><label>Harga (Rp)</label><input type="number" id="produkHarga"></div>
+      <div class="form-group"><label>Harga Jual (Rp)</label><input type="number" id="produkHarga"></div>
+      <div class="form-group"><label>HPP / Harga Modal (Rp)</label><input type="number" id="produkHpp" placeholder="0"></div>
       
       <div class="kons-box">
         <div class="pay-row" style="margin-bottom: 5px;"><span>Produk Konsinyasi (Titip Jual)?</span><input type="checkbox" id="produkIsKonsinyasi" onchange="toggleKonsinyasiForm()"></div>
@@ -721,9 +723,7 @@
       let startDate = document.getElementById('dashDateStart').value;
       let endDate = document.getElementById('dashDateEnd').value;
       callApi('getDashboardData', { startDate: startDate, endDate: endDate }).then(function (d) {
-                document.getElementById('statPeriode').innerText = 'Rp ' + Number(d.penjualanPeriode).toLocaleString('id-ID');
-        document.getElementById('statHpp').innerText = 'Rp ' + Number(d.hppTotal || 0).toLocaleString('id-ID');
-        document.getElementById('statLaba').innerText = 'Rp ' + Number((d.penjualanPeriode || 0) - (d.hppTotal || 0)).toLocaleString('id-ID');
+        document.getElementById('statPeriode').innerText = 'Rp ' + Number(d.penjualanPeriode).toLocaleString('id-ID');
         document.getElementById('statTrxPeriode').innerText = d.trxPeriode;
         document.getElementById('statTrx').innerText = d.totalTrx;
         document.getElementById('statProduk').innerText = d.totalProduk;
@@ -818,10 +818,11 @@
       }).catch(function(err) { t.innerHTML = '<tr><td colspan="7" style="text-align:center; color:red; padding:20px;">Error: ' + esc(err.message) + '</td></tr>'; });
     }
 
-    function openStokModal(type) {
+        function openStokModal(type) {
       modalStokContext = type;
       let prodSelect = document.getElementById('stokProdukId');
-      prodSelect.innerHTML = allProduk.map(p => `<option value="${p[0]}">${esc(p[1])} ${esc(p[2])} (Stok: ${p[5]})</option>`).join('');
+      // PERBAIKAN: Menambahkan p[3] (Storage) ke dalam teks dropdown
+      prodSelect.innerHTML = allProduk.map(p => `<option value="${p[0]}">${esc(p[1])} ${esc(p[2])} ${p[3] ? esc(p[3]) : ''} (Stok: ${p[5]})</option>`).join('');
       
       document.getElementById('modalStokTitle').innerText = type === 'masuk' ? 'Stok Masuk (Restock)' : 'Stok Keluar (Rusak/Hilang)';
       document.getElementById('stokJumlah').value = 1;
@@ -1007,10 +1008,11 @@
       });
     }
 
-    function openKonsinyasiKeluarModal() {
+        function openKonsinyasiKeluarModal() {
       keranjangKonsinyasi = [];
       document.getElementById('kkMitraId').innerHTML = allMitra.map(m => `<option value="${m.id}">${esc(m.nama)}</option>`).join('');
-      document.getElementById('kkProdukId').innerHTML = allProduk.map(p => `<option value="${p[0]}">${esc(p[1])} ${esc(p[2])}</option>`).join('');
+      // PERBAIKAN: Menambahkan p[3] (Storage) ke dalam teks dropdown
+      document.getElementById('kkProdukId').innerHTML = allProduk.map(p => `<option value="${p[0]}">${esc(p[1])} ${esc(p[2])} ${p[3] ? esc(p[3]) : ''}</option>`).join('');
       document.getElementById('kkQty').value = 1;
       document.getElementById('kkHargaSetoran').value = '';
       updateKonsinyasiImeiOptions();
@@ -1145,7 +1147,7 @@
       tbody.innerHTML = rows.join('');
     }
 
-    function openProdukModal(id) {
+        function openProdukModal(id) {
       if (currentUser.role !== 'admin') return;
       document.getElementById('produkId').value = '';
       document.getElementById('produkBarcode').value = '';
@@ -1154,6 +1156,7 @@
       document.getElementById('produkVarian').value = '';
       document.getElementById('produkStorage').value = '';
       document.getElementById('produkHarga').value = '';
+      document.getElementById('produkHpp').value = ''; /* TAMBAHAN HPP */
       document.getElementById('produkFotoFile').value = '';
       document.getElementById('previewProdukFoto').style.display = 'none';
       document.getElementById('produkIsKonsinyasi').checked = false;
@@ -1177,6 +1180,7 @@
           document.getElementById('produkVarian').value = p[2];
           document.getElementById('produkStorage').value = p[3];
           document.getElementById('produkHarga').value = p[4];
+          document.getElementById('produkHpp').value = p[12] || ''; /* TAMBAHAN HPP */
           document.getElementById('produkKategori').value = p[6];
           if (p[7]) { document.getElementById('previewProdukFoto').src = p[7]; document.getElementById('previewProdukFoto').style.display = 'block'; }
           if (p[9]) {
@@ -1197,7 +1201,7 @@
       else area.classList.add('hidden');
     }
 
-    function saveProduk() {
+        function saveProduk() {
       let btn = document.getElementById('btnSaveProduk');
       let barcodeInput = document.getElementById('produkBarcode').value.trim();
       let data = {
@@ -1207,6 +1211,7 @@
         storage: document.getElementById('produkStorage').value.trim(),
         kategori: document.getElementById('produkKategori').value,
         harga: document.getElementById('produkHarga').value,
+        hpp: document.getElementById('produkHpp').value || 0, /* TAMBAHAN HPP */
         foto: getBase64Image('previewProdukFoto'),
         isKonsinyasi: document.getElementById('produkIsKonsinyasi').checked,
         mitraId: document.getElementById('produkMitraId').value,
@@ -1228,7 +1233,6 @@
         btn.innerText = 'Simpan Produk'; btn.disabled = false;
       });
     }
-
     function renderKategori() {
       let c = document.getElementById('catContainer');
       c.innerHTML = '';
@@ -1341,8 +1345,13 @@
       document.getElementById('modalVariant').style.display = 'flex';
     }
 
-    function openImeiModal(variantData) {
-      document.getElementById('modalImeiTitle').innerText = 'Pilih IMEI ' + variantData[1];
+        function openImeiModal(variantData) {
+      // PERBAIKAN: Menggabungkan Nama, Varian, dan Storage di Judul
+      let titleText = 'Pilih IMEI ' + variantData[1];
+      if (variantData[2]) titleText += ' ' + variantData[2];
+      if (variantData[3]) titleText += ' ' + variantData[3];
+      document.getElementById('modalImeiTitle').innerText = titleText;
+      
       let list = document.getElementById('imeiList');
       list.innerHTML = '';
       let imeis = variantData[8].filter(im => im.status === 'tersedia');
