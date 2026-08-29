@@ -567,6 +567,13 @@
       return parseInt(String(str).replace(/[^0-9]/g, '')) || 0;
     }
 
+    // BARU: format Rupiah yang aman -> tampil "-" kalau datanya kosong/tidak valid (bukan "Rp NaN")
+    function fmtRupiah(val) {
+      let n = Number(val);
+      if (val === null || val === undefined || isNaN(n)) return '-';
+      return 'Rp ' + n.toLocaleString('id-ID');
+    }
+
     let currentUser = null; let allProduk = []; let keranjang = []; let kategoriList = ['Semua']; let salesChart = null; let currentSettings = []; let targetDeleteId = null; let targetDeleteType = ''; let activeCategory = 'Semua'; let isCheckingOut = false; 
     let allGaransiData = []; 
     let allMitra = [];
@@ -750,8 +757,8 @@
       let endDate = document.getElementById('dashDateEnd').value;
       callApi('getDashboardData', { startDate: startDate, endDate: endDate }).then(function (d) {
         document.getElementById('statPeriode').innerText = 'Rp ' + Number(d.penjualanPeriode).toLocaleString('id-ID');
-        document.getElementById('statHppPeriode').innerText = 'Rp ' + Number(d.hppPeriode).toLocaleString('id-ID');
-        document.getElementById('statLabaPeriode').innerText = 'Rp ' + Number(d.labaPeriode).toLocaleString('id-ID');
+        document.getElementById('statHppPeriode').innerText = fmtRupiah(d.hppPeriode);
+        document.getElementById('statLabaPeriode').innerText = fmtRupiah(d.labaPeriode);
         document.getElementById('statTrxPeriode').innerText = d.trxPeriode;
         document.getElementById('statTrx').innerText = d.totalTrx;
         document.getElementById('statProduk').innerText = d.totalProduk;
@@ -778,15 +785,15 @@
         let totalPenjualan = 0, totalHpp = 0;
         d.forEach(function(r) { totalPenjualan += Number(r.total) || 0; totalHpp += Number(r.hpp) || 0; });
         document.getElementById('riwayatTotalPenjualan').innerText = 'Rp ' + totalPenjualan.toLocaleString('id-ID');
-        document.getElementById('riwayatTotalHpp').innerText = 'Rp ' + totalHpp.toLocaleString('id-ID');
-        document.getElementById('riwayatTotalLaba').innerText = 'Rp ' + (totalPenjualan - totalHpp).toLocaleString('id-ID');
+        document.getElementById('riwayatTotalHpp').innerText = fmtRupiah(totalHpp);
+        document.getElementById('riwayatTotalLaba').innerText = fmtRupiah(totalPenjualan - totalHpp);
         document.getElementById('riwayatJumlahTrx').innerText = d.length;
         if (!d || d.length === 0) { t.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999; padding:20px;">Belum ada transaksi pada periode ini</td></tr>'; return; }
         let html = '';
         d.forEach(function (r, idx) {
           let dateStr = new Date(r.tgl).toLocaleString('id-ID');
           let itemsTxt = r.items.join(', ');
-          html += '<tr style="border-bottom:1px solid #f5f5f5;"><td style="padding:12px; font-weight:500;">' + esc(r.id) + '</td><td style="padding:12px; color:var(--text-gray);">' + esc(dateStr) + '</td><td style="padding:12px;">' + esc(r.pelanggan) + '</td><td style="padding:12px; font-size:12px;">' + esc(itemsTxt) + '</td><td style="padding:12px; font-weight:600;">Rp ' + Number(r.total).toLocaleString('id-ID') + '</td><td style="padding:12px;">' + esc(r.metode) + '</td><td style="padding:12px;"><button class="btn-action" onclick="cetakUlangStruk(' + idx + ')">Cetak</button></td></tr>';
+          html += '<tr style="border-bottom:1px solid #f5f5f5;"><td style="padding:12px; font-weight:500;">' + esc(r.id) + '</td><td style="padding:12px; color:var(--text-gray);">' + esc(dateStr) + '</td><td style="padding:12px;">' + esc(r.pelanggan) + '</td><td style="padding:12px; font-size:12px;">' + esc(itemsTxt) + '</td><td style="padding:12px; font-weight:600;">Rp ' + Number(r.total).toLocaleString('id-ID') + '</td><td style="padding:12px;">' + esc(r.metode) + '</td><td style="padding:12px; white-space:nowrap;"><button class="btn-action" onclick="cetakUlangStruk(' + idx + ')">Cetak</button><button class="btn-action danger" onclick="confirmDelete(\'' + esc(r.id) + '\', \'transaksi\')">Hapus</button></td></tr>';
         });
         t.innerHTML = html;
       }).catch(function(err) { t.innerHTML = '<tr><td colspan="7" style="text-align:center; color:red; padding:20px;">Error memuat riwayat: ' + esc(err.message) + '</td></tr>'; });
@@ -827,7 +834,7 @@
       callApi('getLaporanHarian', { startDate: startDate, endDate: endDate }).then(function(d) {
         let metodeHtml = '';
         for (let m in d.rincianMetode) {
-          metodeHtml += '<div class="t-row"><span>' + esc(m) + '</span><span>Rp ' + Number(d.rincianMetode[m]).toLocaleString('id-ID') + '</span></div>';
+          metodeHtml += '<div class="t-row"><span>' + esc(m) + '</span><span>' + fmtRupiah(d.rincianMetode[m]) + '</span></div>';
         }
         let strukHtml = '<h3>' + esc(currentSettings[0] || 'Toko') + '</h3>';
         strukHtml += '<p>Laporan Penjualan</p>';
@@ -835,15 +842,18 @@
         strukHtml += '<div class="struk-divider"></div>';
         strukHtml += '<div class="struk-total">';
         strukHtml += '<div class="t-row"><span>Jumlah Transaksi</span><span>' + d.jumlahTransaksi + '</span></div>';
-        strukHtml += '<div class="t-row"><span>Total Penjualan</span><span>Rp ' + Number(d.totalPenjualan).toLocaleString('id-ID') + '</span></div>';
-        strukHtml += '<div class="t-row"><span>Total HPP</span><span>Rp ' + Number(d.totalHpp).toLocaleString('id-ID') + '</span></div>';
-        strukHtml += '<div class="t-row t-bold"><span>Laba Kotor</span><span>Rp ' + Number(d.totalLaba).toLocaleString('id-ID') + '</span></div>';
+        strukHtml += '<div class="t-row"><span>Total Penjualan</span><span>' + fmtRupiah(d.totalPenjualan) + '</span></div>';
+        strukHtml += '<div class="t-row"><span>Total HPP</span><span>' + fmtRupiah(d.totalHpp) + '</span></div>';
+        strukHtml += '<div class="t-row t-bold"><span>Laba Kotor</span><span>' + fmtRupiah(d.totalLaba) + '</span></div>';
         strukHtml += '</div><div class="struk-divider"></div>';
-        strukHtml += '<p style="font-weight:bold; margin-bottom:5px;">Rincian per Metode:</p>' + metodeHtml;
+        strukHtml += '<p style="font-weight:bold; margin-bottom:5px;">Rincian per Metode:</p>' + (metodeHtml || '<div style="color:#999; font-size:12px;">Tidak ada data</div>');
         strukHtml += '<div class="struk-divider"></div>';
         document.getElementById('strukArea').innerHTML = strukHtml;
         document.getElementById('modalStruk').style.display = 'flex';
-      }).catch(function(err) { showToast('Gagal memuat laporan: ' + (err && err.message ? err.message : ''), true); });
+      }).catch(function(err) {
+        let msg = (err && err.message) ? err.message : 'Tidak diketahui';
+        showToast('Gagal memuat laporan: ' + msg, true);
+      });
     }
 
     function resetRiwayatFilterToday() { let todayStr = new Date().toISOString().split('T')[0]; document.getElementById('riwayatDateStart').value = todayStr; document.getElementById('riwayatDateEnd').value = todayStr; loadRiwayat(); }
@@ -1784,6 +1794,12 @@
           loadKonsinyasi(); 
           refreshProdukFromServer(); 
         }).catch(function(err) { showToast('Gagal menghapus mitra: ' + (err && err.message ? err.message : ''), true); });
+      } else if (targetDeleteType === 'transaksi') {
+        callApi('deleteTransaksi', { id: targetDeleteId }).then(function() {
+          showToast('Transaksi dihapus!');
+          loadRiwayat();
+          if (document.getElementById('view-dashboard').classList.contains('active')) loadDashboard();
+        }).catch(function(err) { showToast('Gagal menghapus transaksi: ' + (err && err.message ? err.message : ''), true); });
       }
       targetDeleteId = null; targetDeleteType = '';
     }
