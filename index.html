@@ -172,7 +172,7 @@
             </div>
           </div>
           <div class="stats-grid">
-                        <div class="stat-card"><div class="stat-title">Penjualan (Periode Ini)</div><div class="stat-value" id="statPeriode">Rp 0</div></div>
+            <div class="stat-card"><div class="stat-title">Penjualan (Periode Ini)</div><div class="stat-value" id="statPeriode">Rp 0</div></div>
             <div class="stat-card"><div class="stat-title">HPP (Periode Ini)</div><div class="stat-value" id="statHppPeriode">Rp 0</div></div>
             <div class="stat-card"><div class="stat-title">Laba Kotor (Periode Ini)</div><div class="stat-value" id="statLabaPeriode">Rp 0</div></div>
             <div class="stat-card"><div class="stat-title">Transaksi (Periode Ini)</div><div class="stat-value" id="statTrxPeriode">0</div></div>
@@ -233,7 +233,8 @@
                   <option value="LinkAja">LinkAja</option>
                   <option value="Cicilan">Cicilan</option>
                 </select></div>
-                <div class="pay-row hidden" id="cicilanArea"><input type="text" id="namaCicilan" placeholder="Nama Cicilan (cth: Kredivo, Akulaku)" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;"></div>                <div class="pay-row"><span>Split Payment?</span><input type="checkbox" id="useSplitPayment" onchange="toggleSplitPayment()"></div>
+                <div class="pay-row hidden" id="cicilanArea"><input type="text" id="namaCicilan" placeholder="Nama Cicilan (cth: Kredivo, Akulaku)" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;"></div>
+                <div class="pay-row"><span>Split Payment?</span><input type="checkbox" id="useSplitPayment" onchange="toggleSplitPayment()"></div>
                 <div id="splitPaymentArea" class="hidden" style="margin-bottom:10px;"></div>
 
                 <div class="grand-total"><span>Total</span><span id="totalBayar">Rp 0</span></div>
@@ -272,7 +273,8 @@
               <div style="display:flex; flex-direction:column; gap:3px;"><label style="font-size:11px; color:var(--text-gray); font-weight:600;">Dari</label><input type="date" id="riwayatDateStart" class="date-picker" onchange="loadRiwayat()"></div>
               <div style="display:flex; flex-direction:column; gap:3px;"><label style="font-size:11px; color:var(--text-gray); font-weight:600;">Sampai</label><input type="date" id="riwayatDateEnd" class="date-picker" onchange="loadRiwayat()"></div>
               <button class="btn-action" style="align-self:flex-end; height:42px;" onclick="resetRiwayatFilterToday()">Hari Ini</button>
-              <button class="btn-add" style="margin:0; align-self:flex-end; height:42px;" onclick="cetakLaporanHarian()">🖨️ Cetak Laporan</button>            </div>
+              <button class="btn-add" style="margin:0; align-self:flex-end; height:42px;" onclick="cetakLaporanHarian()">🖨️ Cetak Laporan</button>
+            </div>
           </div>
           <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 20px;">
             <div class="stat-card"><div class="stat-title">Total Penjualan (Periode Ini)</div><div class="stat-value" id="riwayatTotalPenjualan">Rp 0</div></div>
@@ -283,7 +285,7 @@
           <div class="data-table table-scroll">
             <table style="width: 100%; border-collapse: collapse; min-width: 640px;">
               <thead><tr><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Invoice</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Tanggal</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Customer</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Items</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Total</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Bayar</th><th style="padding:12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-gray);">Aksi</th></tr></thead>
-              <tbody id="riwayatTrxTable" style="vertical-align: top;"><tr><td colspan="7" style="text-align:center; color:#999; padding:20px;">Memuat riwayat...</td></tr></tbody>              <tbody id="riwayatTrxTable" style="vertical-align: top;"><tr><td colspan="6" style="text-align:center; color:#999; padding:20px;">Memuat riwayat...</td></tr></tbody>
+              <tbody id="riwayatTrxTable" style="vertical-align: top;"><tr><td colspan="7" style="text-align:center; color:#999; padding:20px;">Memuat riwayat...</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -575,6 +577,7 @@
     let splitPayments = [];
     let usbDevice = null;
     let bleChar = null;
+    let allRiwayatData = [];
 
     var MENU = [
       { page:'dashboard', label:'Dashboard', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>', adminOnly:true },
@@ -765,7 +768,6 @@
 
     function resetDashFilterToday() { let todayStr = new Date().toISOString().split('T')[0]; document.getElementById('dashDateStart').value = todayStr; document.getElementById('dashDateEnd').value = todayStr; loadDashboard(); }
 
-        let allRiwayatData = [];
     function loadRiwayat() {
       let startDate = document.getElementById('riwayatDateStart').value;
       let endDate = document.getElementById('riwayatDateEnd').value;
@@ -1508,7 +1510,7 @@
       hitungTotal();
     }
 
-        function toggleCicilanInput() {
+    function toggleCicilanInput() {
       let sel = document.getElementById('metodeBayar').value;
       let area = document.getElementById('cicilanArea');
       if (sel === 'Cicilan') { area.classList.remove('hidden'); } else { area.classList.add('hidden'); document.getElementById('namaCicilan').value = ''; }
@@ -1549,16 +1551,13 @@
 
     function renderSplitPayments() {
       let html = '';
+      let bankOptionsHtml = '<option value="Cash">Cash</option><option value="QRIS">QRIS</option><option value="Transfer BCA">Transfer BCA</option><option value="Transfer Mandiri">Transfer Mandiri</option><option value="Transfer BRI">Transfer BRI</option><option value="Transfer BNI">Transfer BNI</option><option value="Transfer CIMB Niaga">Transfer CIMB Niaga</option><option value="Transfer Permata">Transfer Permata</option><option value="Transfer BSI">Transfer BSI</option><option value="Transfer Danamon">Transfer Danamon</option><option value="Transfer BTN">Transfer BTN</option><option value="Transfer OCBC">Transfer OCBC</option><option value="GoPay">GoPay</option><option value="DANA">DANA</option><option value="OVO">OVO</option><option value="ShopeePay">ShopeePay</option><option value="LinkAja">LinkAja</option>';
       splitPayments.forEach((sp, idx) => {
         let displayJumlah = sp.jumlah ? sp.jumlah.toLocaleString('id-ID') : '';
+        let opts = bankOptionsHtml.replace('value="' + sp.metode + '"', 'value="' + sp.metode + '" selected');
         html += `<div style="display:flex; gap:5px; margin-bottom:5px;">
           <select onchange="updateSplitPayment(${idx}, 'metode', this.value)" style="flex:1; padding:6px; border:1px solid #ddd; border-radius:4px;">
-            <option value="Cash" ${sp.metode === 'Cash' ? 'selected' : ''}>Cash</option>
-            <option value="QRIS" ${sp.metode === 'QRIS' ? 'selected' : ''}>QRIS</option>
-            <option value="Transfer BCA" ${sp.metode === 'Transfer BCA' ? 'selected' : ''}>Transfer BCA</option>
-            <option value="Transfer Mandiri" ${sp.metode === 'Transfer Mandiri' ? 'selected' : ''}>Transfer Mandiri</option>
-            <option value="GoPay" ${sp.metode === 'GoPay' ? 'selected' : ''}>GoPay</option>
-            <option value="DANA" ${sp.metode === 'DANA' ? 'selected' : ''}>DANA</option>
+            ${opts}
           </select>
           <input type="text" value="${displayJumlah}" oninput="formatRupiah(this); updateSplitPayment(${idx}, 'jumlah', this.value)" placeholder="Rp" style="width:80px; padding:6px; border:1px solid #ddd; border-radius:4px; text-align:right;">
           <button onclick="removeSplitPayment(${idx})" style="background:#dc3545; color:#fff; border:none; padding:6px 10px; border-radius:4px; cursor:pointer;">X</button>
@@ -1600,7 +1599,8 @@
       if (metode === 'Cicilan') {
         let namaCicilan = document.getElementById('namaCicilan').value.trim();
         if (namaCicilan) metode = 'Cicilan - ' + namaCicilan;
-      }      let calc = hitungTotal();
+      }
+      let calc = hitungTotal();
       let keranjangToSave = JSON.parse(JSON.stringify(keranjang));
       
       let splitPayData = [];
@@ -1689,6 +1689,8 @@
         toggleTukarTambah(); 
         document.getElementById('useTukarTambah').checked = false;
         document.getElementById('masaGaransi').value = '0';
+        document.getElementById('metodeBayar').value = 'Cash';
+        toggleCicilanInput();
         if (document.getElementById('useSplitPayment').checked) {
           document.getElementById('useSplitPayment').checked = false;
           toggleSplitPayment();
