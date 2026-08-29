@@ -709,7 +709,7 @@
       if (el) el.classList.add('active');
       document.getElementById('pageTitle').innerText = menu ? menu.label : page;
       if (page === 'dashboard') {
-        let todayStr = new Date().toISOString().split('T')[0];
+                let todayStr = wibToday();
         if (!document.getElementById('dashDateStart').value) document.getElementById('dashDateStart').value = todayStr;
         if (!document.getElementById('dashDateEnd').value) document.getElementById('dashDateEnd').value = todayStr;
         loadDashboard();
@@ -720,7 +720,7 @@
       if (page === 'garansi') loadGaransi();
       if (page === 'konsinyasi') loadKonsinyasi();
       if (page === 'riwayat') {
-        let todayStr = new Date().toISOString().split('T')[0];
+                let todayStr = wibToday();
         if (!document.getElementById('riwayatDateStart').value) document.getElementById('riwayatDateStart').value = todayStr;
         if (!document.getElementById('riwayatDateEnd').value) document.getElementById('riwayatDateEnd').value = todayStr;
         loadRiwayat();
@@ -773,8 +773,11 @@
       }).catch(function(err) { showToast('Gagal memuat dashboard: ' + (err && err.message ? err.message : ''), true); });
     }
 
-    function resetDashFilterToday() { let todayStr = new Date().toISOString().split('T')[0]; document.getElementById('dashDateStart').value = todayStr; document.getElementById('dashDateEnd').value = todayStr; loadDashboard(); }
-
+    function wibToday() {
+  return new Date(Date.now() + 7 * 3600 * 1000).toISOString().split('T')[0];
+}
+function resetDashFilterToday() { let todayStr = wibToday(); document.getElementById('dashDateStart').value = todayStr; document.getElementById('dashDateEnd').value = todayStr; loadDashboard(); }
+    
     function loadRiwayat() {
       let startDate = document.getElementById('riwayatDateStart').value;
       let endDate = document.getElementById('riwayatDateEnd').value;
@@ -856,8 +859,8 @@
       });
     }
 
-    function resetRiwayatFilterToday() { let todayStr = new Date().toISOString().split('T')[0]; document.getElementById('riwayatDateStart').value = todayStr; document.getElementById('riwayatDateEnd').value = todayStr; loadRiwayat(); }
-
+function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElementById('riwayatDateStart').value = todayStr; document.getElementById('riwayatDateEnd').value = todayStr; loadRiwayat(); }
+    
     function loadGaransi() {
       let t = document.getElementById('garansiTable');
       t.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#999; padding:20px;">Memuat data garansi...</td></tr>';
