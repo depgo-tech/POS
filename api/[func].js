@@ -564,6 +564,15 @@ harga_modal: Number(data.hpp) || 0,
         transaksi: list
       });
     }
+    if (func === 'bulkUpdateHpp') {
+      const { items } = body;
+      if (!Array.isArray(items) || items.length === 0) return res.status(400).json({ error: 'Data tidak valid.' });
+      for (const it of items) {
+        await supabase.from('produk').update({ harga_modal: Number(it.hpp) || 0 }).eq('id', it.id);
+      }
+      return res.json("Sukses");
+    }
+    
     if (func === 'getUsers') {
       const { data } = await supabase.from('users').select('*');
       const mapped = (data || []).map(u => ({ id: u.id, username: u.username, full_name: u.full_name, role: u.role }));
