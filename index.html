@@ -1945,12 +1945,16 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
         if (p) inp.value = Math.round(Number(p[4]) * pct / 100).toLocaleString('id-ID');
       });
     }
-    function simpanHppMassal() {
+        function simpanHppMassal() {
       let items = [];
       document.querySelectorAll('#hppList .hpp-input').forEach(function(inp) {
-        items.push({ id: inp.getAttribute('data-id'), hpp: parseRupiah(inp.value) });
+        let id = inp.getAttribute('data-id');
+        let hpp = parseRupiah(inp.value);
+        let p = allProduk.find(function(x) { return x[0] === id; });
+        let hppLama = p ? (Number(p[12]) || 0) : -1;
+        if (hpp !== hppLama) items.push({ id: id, hpp: hpp });
       });
-      if (items.length === 0) { showToast('Tidak ada data!', true); return; }
+      if (items.length === 0) { showToast('Tidak ada perubahan untuk disimpan!', true); return; }
       let btn = document.getElementById('btnSaveHpp');
       btn.disabled = true; btn.innerHTML = '<div class="spinner-white"></div> Menyimpan...';
       callApi('bulkUpdateHpp', { items: items }).then(function() {
