@@ -1087,9 +1087,9 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
       });
     }
 
-    function loadKonsinyasi() {
+        function loadKonsinyasi() {
       callApi('getMitra', {}).then(function(data) {
-        allMitra = data || []; 
+        allMitra = data || [];
         let tbody = document.getElementById('tableMitra');
         let rows = allMitra.map(function(m) {
           let actions = '<button class="btn-action" onclick="openModalFinansial(\'bayar_hutang\', \'' + esc(m.id) + '\', \'' + esc(m.nama) + '\', ' + m.hutang + ')">Bayar Hutang</button>';
@@ -1111,7 +1111,7 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
               let sisa = Number(k.total) - Number(k.terbayar || 0);
               let statusColor = k.status === 'Lunas' ? 'green' : 'red';
               let actions = k.status !== 'Lunas' ? '<button class="btn-action" onclick="openModalFinansial(\'terima_piutang\', \'' + esc(k.id) + '\', \'' + esc(k.mitra_nama) + '\', ' + sisa + ')">Terima Setoran</button>' : '<span style="color:#999; font-size:11px;">Lunas</span>';
-              return '<tr><td>' + esc(dateStr) + '</td><td>' + esc(k.mitra_nama) + '</td><td style="font-size:12px;">' + esc(k.items) + ''</td><td style="font-weight:600;">Rp ' + Number(k.total).toLocaleString('id-ID') + '</td>td>Rp ' + Number(k.terbayar || 0).toLocaleString('id-ID') + '</td><td style="color:' + statusColor + '; font-weight:600;">' + esc(k.status) + '</td><td>' + actions + '</td></tr>';
+              return '<tr><td>' + esc(dateStr) + '</td><td>' + esc(k.mitra_nama) + '</td><td style="font-size:12px;">' + esc(k.items) + '</td><td style="font-weight:600;">Rp ' + Number(k.total).toLocaleString('id-ID') + '</td><td>Rp ' + Number(k.terbayar || 0).toLocaleString('id-ID') + '</td><td style="color:' + statusColor + '; font-weight:600;">' + esc(k.status) + '</td><td>' + actions + '</td></tr>';
             });
             tbody.innerHTML = rows.join('');
           }).catch(function(){});
