@@ -99,8 +99,8 @@ harga_modal: Number(data.hpp) || 0,
       return res.json("Sukses");
     }
 
-    if (func === 'simpanTransaksi') {
-      const { keranjang, pelanggan, diskonStr, metode, ttNama, ttImei, ttNilai, masaGaransi, splitPayments } = body;
+        if (func === 'simpanTransaksi') {
+      const { keranjang, pelanggan, diskonStr, metode, ttNama, ttImei, ttNilai, masaGaransi, splitPayments, kasir } = body;
 
       const itemIds = keranjang.map(i => i.id);
       const { data: prods } = await supabase.from('produk').select('*').in('id', itemIds);
@@ -118,27 +118,33 @@ harga_modal: Number(data.hpp) || 0,
         }
       }
 
-      let total = 0;
-      let hppTotal = 0; // BARU: HPP
+            let total = 0;
+      let hppTotal = 0;
       let itemsArr = [];
+      let itemsJson = []; // BARU: detail lengkap untuk cetak ulang
       keranjang.forEach(item => {
         const qty = Number(item.qty) || 0;
         total += Number(item.harga) * qty;
         const prod = prodMap[item.id];
-        // BARU: HPP -> konsinyasi pakai harga_setoran (modal ke mitra), produk biasa pakai harga_modal
         const modalSatuan = prod.is_konsinyasi ? Number(prod.harga_setoran || 0) : Number(prod.harga_modal || 0);
         hppTotal += modalSatuan * qty;
         let storageTxt = item.storage ? ' (' + item.storage + ')' : '';
         let imeiTxt = item.imei ? ' [IMEI:' + item.imei + ']' : '';
         itemsArr.push(item.nama + ' ' + item.varian + storageTxt + imeiTxt + ' x' + item.qty);
+        itemsJson.push({
+          id: item.id, nama: item.nama, varian: item.varian || '',
+          storage: item.storage || '', imei: item.imei || null,
+          qty: qty, harga: Number(item.harga)
+        });
       });
 
       let diskonRp = 0;
       if (String(diskonStr).indexOf('%') !== -1) diskonRp = (total * parseFloat(diskonStr)) / 100;
       else diskonRp = parseFloat(diskonStr) || 0;
 
-      let nilaiTukar = Number(ttNilai) || 0;
+            let nilaiTukar = Number(ttNilai) || 0;
       let totalAkhir = total - diskonRp - nilaiTukar;
+      if (totalAkhir < 0) totalAkhir = 0; // tukar tambah tidak boleh bikin minus
       let tgl = new Date().toISOString();
       let idTrx = 'INV' + tgl.replace(/[-:T]/g, '').split('.')[0] + Math.floor(Math.random() * 90 + 10);
       
@@ -150,8 +156,10 @@ harga_modal: Number(data.hpp) || 0,
         rincianBayar = splitPayments.map(p => ({ metode: p.metode, jumlah: Number(p.jumlah) || 0 }));
       }
 
-            const { error: trxErr } = await supabase.from('transaksi').insert([{
+                  const { error: trxErr } = await supabase.from('transaksi').insert([{
         id: idTrx, tgl: tgl, pelanggan: pelanggan, items: itemsArr.join(', '),
+        items_json: itemsJson,        // BARU
+        kasir: kasir || null,         // BARU
         total: totalAkhir, hpp: hppTotal, metode: metodeBayarFinal, diskon: diskonStr,
         rincian_bayar: rincianBayar,
         tt_nama: ttNama || null, tt_imei: ttImei || null, tt_nilai: nilaiTukar
@@ -206,10 +214,35 @@ harga_modal: Number(data.hpp) || 0,
       return res.json({ status: "Sukses", idTrx: idTrx, total: totalAkhir, hpp: hppTotal, laba: totalAkhir - hppTotal });
     }
 
-    // ===== BARU: Hapus transaksi dari Riwayat =====
+        // Hapus transaksi + kembalikan stok/IMEI + koreksi hutang mitra + hapus garansi
     if (func === 'deleteTransaksi') {
       const { id } = body;
       if (!id) return res.status(400).json({ error: 'ID transaksi wajib diisi.' });
+      const { data: trx } = await supabase.from('transaksi').select('*').eq('id', id).single();
+      if (!trx) return res.status(404).json({ error: 'Transaksi tidak ditemukan.' });
+
+      if (Array.isArray(trx.items_json)) {
+        for (const it of trx.items_json) {
+          const { data: p } = await supabase.from('produk')
+            .select('stok, imeis, is_konsinyasi, mitra_id, harga_setoran').eq('id', it.id).single();
+          if (!p) continue;
+          if (it.imei) {
+            const imeis = (p.imeis || []).filter(im => im.imei !== it.imei);
+            imeis.push({ imei: it.imei, status: 'tersedia' });
+            await supabase.from('produk').update({ imeis: imeis, stok: imeis.length }).eq('id', it.id);
+          } else {
+            await supabase.from('produk').update({ stok: Number(p.stok) + Number(it.qty || 0) }).eq('id', it.id);
+          }
+          if (p.is_konsinyasi && p.mitra_id) {
+            const { data: m } = await supabase.from('mitra').select('hutang').eq('id', p.mitra_id).single();
+            if (m) {
+              let h = Number(m.hutang) - Number(p.harga_setoran || 0) * Number(it.qty || 0);
+              await supabase.from('mitra').update({ hutang: Math.max(0, h) }).eq('id', p.mitra_id);
+            }
+          }
+        }
+      }
+      await supabase.from('garansi').delete().eq('no_invoice', id);
       await supabase.from('transaksi').delete().eq('id', id);
       return res.json("Sukses");
     }
@@ -344,7 +377,7 @@ harga_modal: Number(data.hpp) || 0,
           await supabase.from('produk').update({ stok: stokBaru }).eq('id', produkId);
         }
 
-        let id = 'LOG' + Date.now();
+                let id = 'LOG' + Date.now() + Math.floor(Math.random() * 900 + 100);
         let tgl = new Date().toISOString();
         await supabase.from('stok_log').insert([{
           id, tgl, produk_id: produkId, produk_nama: produkNama,
@@ -379,7 +412,7 @@ harga_modal: Number(data.hpp) || 0,
           await supabase.from('produk').update({ stok: stokBaru }).eq('id', produkId);
         }
 
-        let id = 'LOG' + Date.now();
+                let id = 'LOG' + Date.now() + Math.floor(Math.random() * 900 + 100);
         let tgl = new Date().toISOString();
         await supabase.from('stok_log').insert([{
           id, tgl, produk_id: produkId, produk_nama: produkNama,
@@ -422,9 +455,12 @@ harga_modal: Number(data.hpp) || 0,
       const { start, end } = getRangeWib(startDate, endDate);
       const { data, error: errTrx } = await supabase.from('transaksi').select('*').gte('tgl', start).lte('tgl', end).order('tgl', { ascending: false });
       if (errTrx) return res.status(500).json({ error: errTrx.message });
-      const mapped = (data || []).map(row => ({
+           const mapped = (data || []).map(row => ({
         id: row.id, tgl: row.tgl, pelanggan: row.pelanggan,
         items: row.items ? row.items.split(', ') : [],
+        items_json: row.items_json || null,        // BARU
+        rincian_bayar: row.rincian_bayar || null,  // BARU
+        kasir: row.kasir || null,                  // BARU
         total: row.total,
         hpp: Number(row.hpp) || 0,
         laba: (Number(row.total) || 0) - (Number(row.hpp) || 0),
