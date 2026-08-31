@@ -204,12 +204,8 @@
                 <div class="pay-row"><span>Subtotal</span><span id="subTotalText">Rp 0</span></div>
                 <div class="pay-row"><span>Diskon (Ctrl+D)</span><div class="pay-input-group"><select id="diskonType" onchange="hitungTotal()"><option value="rp">Rp</option><option value="%">%</option></select><input type="text" id="diskonInput" value="0" oninput="formatRupiah(this); hitungTotal()" tabindex="1"></div></div>
                 
-                <div class="pay-row"><span>Pakai Tukar Tambah?</span><input type="checkbox" id="useTukarTambah" onchange="toggleTukarTambah()"></div>
-                <div class="tt-box hidden" id="tukarTambahArea">
-                  <input type="text" id="ttNama" placeholder="Nama HP Tukar" style="width:100%; margin-bottom:5px; padding:8px; border:1px solid #ddd; border-radius:4px;">
-                  <input type="text" id="ttImei" placeholder="IMEI HP Tukar (opsional)" style="width:100%; margin-bottom:5px; padding:8px; border:1px solid #ddd; border-radius:4px;">
-                  <input type="text" id="ttNilai" placeholder="Nilai Tukar (Rp)" oninput="formatRupiah(this); hitungTotal()" style="width: 100%; padding:8px; border:1px solid #ddd; border-radius:4px;">
-                </div>
+                               <div class="pay-row"><span>Pakai Tukar Tambah?</span><input type="checkbox" id="useTukarTambah" onchange="toggleTukarTambah()"></div>
+                <div id="ttSummary" class="hidden"></div>
 
                 <div class="pay-row"><span>Pilih Garansi</span><select id="masaGaransi"><option value="0">Tidak Bergaransi</option><option value="1">1 Bulan (Toko)</option><option value="3">3 Bulan (Toko)</option><option value="6">6 Bulan (Toko)</option><option value="12">12 Bulan (Distributor)</option><option value="24">24 Bulan (Ibox)</option></select></div>
                 
@@ -535,6 +531,17 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="modalTukarTambah">
+    <div class="modal-content" style="max-width:400px;">
+      <h3>Detail Tukar Tambah</h3>
+      <div class="form-group"><label>Nama HP Tukar</label><input type="text" id="popTtNama" placeholder="cth: iPhone 7 32GB"></div>
+      <div class="form-group"><label>IMEI HP Tukar (opsional)</label><input type="text" id="popTtImei" placeholder="Opsional"></div>
+      <div class="form-group"><label>Nilai Tukar (Rp)</label><input type="text" id="popTtNilai" inputmode="numeric" placeholder="0" oninput="formatRupiah(this)"></div>
+      <button class="btn-save" onclick="simpanTukarTambah()">Simpan</button>
+      <button class="btn-close-modal" onclick="batalTukarTambah()">Batal</button>
+    </div>
+  </div>
+  
   <div class="toast-container" id="toastContainer"></div>
 
   <script>
@@ -740,7 +747,7 @@
     }
 
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') { closeModal('modalProduk'); closeModal('modalStruk'); closeModal('modalVariant'); closeModal('modalImei'); closeModal('modalConfirm'); closeModal('modalKonsinyasiKeluar'); closeModal('modalFinansial'); closeModal('modalPromptText'); closeModal('modalStok'); closeModal('modalOpname'); closeScanner(); }
+           if (e.key === 'Escape') { closeModal('modalProduk'); closeModal('modalStruk'); closeModal('modalVariant'); closeModal('modalImei'); closeModal('modalConfirm'); closeModal('modalKonsinyasiKeluar'); closeModal('modalFinansial'); closeModal('modalPromptText'); closeModal('modalStok'); closeModal('modalOpname'); closeModal('modalTukarTambah'); closeModal('modalHpp'); closeScanner(); }
       if (e.key === 'Enter') {
         let active = document.activeElement;
         if (active.tagName !== 'INPUT' && active.tagName !== 'SELECT' && active.tagName !== 'TEXTAREA') { if (document.getElementById('btnCheckout') && !document.getElementById('btnCheckout').disabled) { processCheckout(); } }
@@ -1571,18 +1578,43 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
       hitungTotal();
     }
 
+       let ttData = { nama: '', imei: '', nilai: 0 };
     function toggleTukarTambah() {
       let cb = document.getElementById('useTukarTambah');
-      let area = document.getElementById('tukarTambahArea');
-      if (cb.checked) {
-        area.classList.remove('hidden');
-      } else {
-        area.classList.add('hidden');
-        document.getElementById('ttNama').value = '';
-        document.getElementById('ttImei').value = '';
-        document.getElementById('ttNilai').value = '';
-      }
+      if (cb.checked) { openTukarTambahPopup(); }
+      else { hapusTukarTambah(); }
+    }
+    function openTukarTambahPopup() {
+      document.getElementById('popTtNama').value = ttData.nama || '';
+      document.getElementById('popTtImei').value = ttData.imei || '';
+      document.getElementById('popTtNilai').value = ttData.nilai ? ttData.nilai.toLocaleString('id-ID') : '';
+      document.getElementById('modalTukarTambah').style.display = 'flex';
+    }
+    function simpanTukarTambah() {
+      let nilai = parseRupiah(document.getElementById('popTtNilai').value);
+      if (nilai <= 0) { showToast('Nilai tukar wajib diisi!', true); return; }
+      ttData = { nama: document.getElementById('popTtNama').value.trim(), imei: document.getElementById('popTtImei').value.trim(), nilai: nilai };
+      document.getElementById('useTukarTambah').checked = true;
+      closeModal('modalTukarTambah');
+      renderTtSummary();
       hitungTotal();
+    }
+    function batalTukarTambah() {
+      closeModal('modalTukarTambah');
+      if (!ttData.nilai) document.getElementById('useTukarTambah').checked = false;
+    }
+    function hapusTukarTambah() {
+      ttData = { nama: '', imei: '', nilai: 0 };
+      document.getElementById('useTukarTambah').checked = false;
+      renderTtSummary();
+      hitungTotal();
+    }
+    function renderTtSummary() {
+      let el = document.getElementById('ttSummary');
+      if (ttData.nilai > 0) {
+        el.classList.remove('hidden');
+        el.innerHTML = '<div style="display:flex; justify-content:space-between; align-items:center; background:#fff0f0; border:1px dashed #dc3545; border-radius:8px; padding:8px 10px; font-size:13px; margin-bottom:10px;"><span>' + esc(ttData.nama || 'Tukar Tambah') + ' <b>- Rp ' + ttData.nilai.toLocaleString('id-ID') + '</b></span><span><span style="cursor:pointer; font-weight:700; margin-right:10px;" onclick="openTukarTambahPopup()">✎</span><span style="color:#dc3545; cursor:pointer; font-weight:700;" onclick="hapusTukarTambah()">✕</span></span></div>';
+      } else { el.classList.add('hidden'); el.innerHTML = ''; }
     }
 
     function toggleCicilanInput() {
@@ -1650,17 +1682,14 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
       if (dType === 'rp') diskonRp = dVal; else if (dType === '%') diskonRp = (s * dVal) / 100;
       if (diskonRp < 0) diskonRp = 0; if (diskonRp > s) diskonRp = s;
       
-      let ttNilai = 0;
-      if (document.getElementById('useTukarTambah').checked) {
-        ttNilai = parseRupiah(document.getElementById('ttNilai').value);
-      }
+           let ttNilai = (document.getElementById('useTukarTambah').checked && ttData) ? ttData.nilai : 0;
 
       let total = s - diskonRp - ttNilai;
       if (total < 0) total = 0;
       
       document.getElementById('subTotalText').innerText = 'Rp ' + s.toLocaleString('id-ID');
       document.getElementById('totalBayar').innerText = 'Rp ' + total.toLocaleString('id-ID');
-      return { sub: s, diskonRp: diskonRp, total: total, diskonStr: dType === 'rp' ? dVal : dVal + '%', ttNama: document.getElementById('ttNama').value, ttImei: document.getElementById('ttImei').value, ttNilai: ttNilai, masaGaransi: document.getElementById('masaGaransi').value };
+            return { sub: s, diskonRp: diskonRp, total: total, diskonStr: dType === 'rp' ? dVal : dVal + '%', ttNama: ttData.nama, ttImei: ttData.imei, ttNilai: ttNilai, masaGaransi: document.getElementById('masaGaransi').value };
     }
 
     function processCheckout() {
@@ -1727,8 +1756,7 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
         keranjang = [];
         document.getElementById('namaPelanggan').value = '';
         document.getElementById('diskonInput').value = 0;
-               document.getElementById('useTukarTambah').checked = false;
-        toggleTukarTambah();
+                       hapusTukarTambah();
         document.getElementById('masaGaransi').value = '0';
         document.getElementById('metodeBayar').value = 'Cash';
         toggleCicilanInput();
