@@ -120,7 +120,9 @@
     @media (max-width: 768px) { .topbar h3 { font-size: 16px; } .user-info { gap: 8px; } .btn-logout { padding: 8px 10px; font-size: 12px; } }
     @media (max-width: 600px) { .topbar { padding: 12px 15px; } .topbar h3 { font-size: 15px; } .user-name, .user-role { display: none; } .user-info { gap: 8px; } .btn-logout { padding: 8px 10px; font-size: 12px; } .stats-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); } .chart-container { height: 280px; } .product-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; } .pos-top-bar { gap: 10px; } .search-box { min-width: 0; } .dashboard-header h2 { font-size: 20px; } .stat-value { font-size: 18px; } }
     @media (max-width: 480px) { .login-box { padding: 30px 20px; border-radius: 12px; } .login-box h2 { font-size: 20px; } .login-box p { font-size: 13px; margin-bottom: 20px; } 
-</style>
+    .product-card { content-visibility: auto; contain-intrinsic-size: auto 230px; }
+  
+  </style>
 </head>
 <body>
   <div id="login-view" class="login-view">
@@ -385,15 +387,14 @@
       <div class="form-group"><label>Varian / Warna</label><input type="text" id="produkVarian"></div>
       <div class="form-group"><label>Storage (Opsional)</label><input type="text" id="produkStorage" placeholder="cth: 128GB"></div>
       <div class="form-group"><label>Kategori</label><select id="produkKategori"><option value="Handphone">Handphone</option><option value="Tablet">Tablet</option><option value="Aksesoris">Aksesoris</option><option value="Lainnya">Lainnya</option></select></div>
-      <div class="form-group"><label>Harga Jual (Rp)</label><input type="number" id="produkHarga"></div>
-      <div class="form-group"><label>HPP / Harga Modal (Rp)</label><input type="number" id="produkHpp" placeholder="0"></div>
+           <div class="form-group"><label>Harga Jual (Rp)</label><input type="text" id="produkHarga" inputmode="numeric" oninput="formatRupiah(this)" placeholder="0"></div>
+      <div class="form-group"><label>HPP / Harga Modal (Rp)</label><input type="text" id="produkHpp" inputmode="numeric" oninput="formatRupiah(this)" placeholder="0"></div>
       
       <div class="kons-box">
         <div class="pay-row" style="margin-bottom: 5px;"><span>Produk Konsinyasi (Titip Jual)?</span><input type="checkbox" id="produkIsKonsinyasi" onchange="toggleKonsinyasiForm()"></div>
         <div id="konsinyasiForm" class="hidden">
           <div class="form-group" style="margin-top:10px;"><label>Pilih Mitra</label><select id="produkMitraId"></select></div>
-          <div class="form-group"><label>Harga Setoran ke Mitra (Rp)</label><input type="number" id="produkHargaSetoran" placeholder="Uang yang dibayar ke mitra jika terjual"></div>
-        </div>
+          <div class="form-group"><label>Harga Setoran ke Mitra (Rp)</label><input type="text" id="produkHargaSetoran" inputmode="numeric" oninput="formatRupiah(this)" placeholder="Uang yang dibayar ke mitra jika terjual"></div>        </div>
       </div>
 
       <div class="form-group" style="margin-top:15px;"><label>Foto Produk</label><input type="file" id="produkFotoFile" accept="image/*" onchange="previewImage(this, 'previewProdukFoto')"><img id="previewProdukFoto" class="preview-img" style="display:none;"></div>
@@ -419,8 +420,7 @@
           <input type="number" id="kkQty" value="1" min="1">
         </div>
         <label style="margin-top:10px;">Harga Setoran (per item)</label>
-        <input type="number" id="kkHargaSetoran" placeholder="Berapa yang dibayar mitra ke kita">
-        <button class="btn-action" style="margin-top:10px; width:100%;" onclick="tambahKeranjangKonsinyasi()">Tambah ke Daftar Kirim</button>
+        <input type="text" id="kkHargaSetoran" inputmode="numeric" placeholder="Berapa yang dibayar mitra ke kita" oninput="formatRupiah(this)">        <button class="btn-action" style="margin-top:10px; width:100%;" onclick="tambahKeranjangKonsinyasi()">Tambah ke Daftar Kirim</button>
       </div>
 
       <h4 style="margin-top:15px; margin-bottom:10px;">Daftar Barang Dikirim:</h4>
@@ -606,6 +606,7 @@
     let usbDevice = null;
     let bleChar = null;
     let allRiwayatData = [];
+        let posRenderLimit = 60;
 
     var MENU = [
       { page:'dashboard', label:'Dashboard', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>', adminOnly:true },
@@ -735,7 +736,7 @@
         if (!document.getElementById('dashDateEnd').value) document.getElementById('dashDateEnd').value = todayStr;
         loadDashboard();
       }
-            if (page === 'pos') refreshProdukFromServer();
+      if (page === 'pos') { renderProduk(); refreshProdukFromServer(); }
       if (page === 'produk') loadTableProduk();
       if (page === 'stok') loadStokLog();
       if (page === 'garansi') loadGaransi();
@@ -1218,7 +1219,7 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
       let prodId = document.getElementById('kkProdukId').value;
       let p = allProduk.find(x => x[0] === prodId);
       if (!p) return;
-      let hargaSetoran = parseFloat(document.getElementById('kkHargaSetoran').value) || 0;
+      let hargaSetoran = parseRupiah(document.getElementById('kkHargaSetoran').value);
       if (hargaSetoran <= 0) { showToast('Harga setoran wajib diisi!', true); return; }
 
       let item = { id: p[0], nama: p[1], varian: p[2], hargaSetoran: hargaSetoran, imei: null, qty: 0 };
@@ -1292,12 +1293,12 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
             let canvas = document.createElement('canvas');
             let ctx = canvas.getContext('2d');
             let width = img.width, height = img.height;
-            let MAX_SIZE = 400;
+            let MAX_SIZE = 260;
             if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } }
             else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } }
             canvas.width = width; canvas.height = height;
             ctx.drawImage(img, 0, 0, width, height);
-            let dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            let dataUrl = canvas.toDataURL('image/jpeg', 0.7);
             document.getElementById(previewId).src = dataUrl;
             document.getElementById(previewId).style.display = 'block';
           };
@@ -1357,15 +1358,15 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
           document.getElementById('produkNama').value = p[1];
           document.getElementById('produkVarian').value = p[2];
           document.getElementById('produkStorage').value = p[3];
-          document.getElementById('produkHarga').value = p[4];
-          document.getElementById('produkHpp').value = p[12] || ''; /* TAMBAHAN HPP */
+                    document.getElementById('produkHarga').value = Number(p[4]).toLocaleString('id-ID');
+          document.getElementById('produkHpp').value = p[12] ? Number(p[12]).toLocaleString('id-ID') : '';
           document.getElementById('produkKategori').value = p[6];
           if (p[7]) { document.getElementById('previewProdukFoto').src = p[7]; document.getElementById('previewProdukFoto').style.display = 'block'; }
           if (p[9]) {
             document.getElementById('produkIsKonsinyasi').checked = true;
             toggleKonsinyasiForm();
             document.getElementById('produkMitraId').value = p[10];
-            document.getElementById('produkHargaSetoran').value = p[11];
+            document.getElementById('produkHargaSetoran').value = p[11] ? Number(p[11]).toLocaleString('id-ID') : '';
           }
         }
       } else { document.getElementById('modalProdukTitle').innerText = 'Tambah Produk'; }
@@ -1388,12 +1389,12 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
         varian: document.getElementById('produkVarian').value.trim(),
         storage: document.getElementById('produkStorage').value.trim(),
         kategori: document.getElementById('produkKategori').value,
-        harga: document.getElementById('produkHarga').value,
-        hpp: document.getElementById('produkHpp').value || 0, /* TAMBAHAN HPP */
+               harga: parseRupiah(document.getElementById('produkHarga').value),
+        hpp: parseRupiah(document.getElementById('produkHpp').value),
         foto: getBase64Image('previewProdukFoto'),
         isKonsinyasi: document.getElementById('produkIsKonsinyasi').checked,
         mitraId: document.getElementById('produkMitraId').value,
-        hargaSetoran: document.getElementById('produkHargaSetoran').value
+        hargaSetoran: parseRupiah(document.getElementById('produkHargaSetoran').value)
       };
       if (!data.nama || !data.harga) { showToast('Nama dan Harga wajib diisi!', true); return; }
       if (data.isKonsinyasi && !data.mitraId) { showToast('Mitra wajib dipilih untuk produk konsinyasi!', true); return; }
@@ -1423,9 +1424,9 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
       });
     }
 
-    function filterCategory(k, el) { activeCategory = k; document.querySelectorAll('.cat-btn').forEach(function (b) { b.classList.remove('active'); }); el.classList.add('active'); renderProduk(); }
+       function filterCategory(k, el) { activeCategory = k; posRenderLimit = 60; document.querySelectorAll('.cat-btn').forEach(function (b) { b.classList.remove('active'); }); el.classList.add('active'); renderProduk(); }
     let searchDebounceTimer = null;
-    function debouncedRenderProduk() { clearTimeout(searchDebounceTimer); searchDebounceTimer = setTimeout(renderProduk, 250); }
+    function debouncedRenderProduk() { clearTimeout(searchDebounceTimer); searchDebounceTimer = setTimeout(function () { posRenderLimit = 60; renderProduk(); }, 250); }
 
     function handleSearchKeydown(e) {
       if (e.key === 'Enter') {
@@ -1473,9 +1474,11 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
                 let matchSearch = String(p[1]).toLowerCase().includes(searchTerm) || String(p[2]).toLowerCase().includes(searchTerm) || String(p[0]).toLowerCase().includes(searchTerm) || (p[8] || []).some(function(im) { return String(im.imei).toLowerCase().includes(searchTerm); });
         return matchCat && matchSearch;
       });
-      if (f.length === 0) { c.innerHTML = '<p style="color:#999; text-align:center;">Produk tidak ditemukan.</p>'; return; }
+           if (f.length === 0) { c.innerHTML = '<p style="color:#999; text-align:center;">Produk tidak ditemukan.</p>'; return; }
+      let fShow = f.slice(0, posRenderLimit);
       let grouped = {};
-      f.forEach(function (p) { if (!grouped[p[1]]) grouped[p[1]] = []; grouped[p[1]].push(p); });
+      fShow.forEach(function (p) { if (!grouped[p[1]]) grouped[p[1]] = []; grouped[p[1]].push(p); });
+      
       let fragment = document.createDocumentFragment();
       for (let nama in grouped) {
         let variants = grouped[nama];
@@ -1488,8 +1491,18 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
         d.className = 'product-card';
         d.innerHTML = '<div class="product-img-box"><img src="' + esc(img) + '" class="product-img" loading="lazy"></div><div class="p-info"><div class="p-name">' + esc(nama) + '</div><div class="p-var">' + variants.length + ' Pilihan Varian' + (totalStokVarian <= 0 ? ' · Stok habis' : '') + '</div><div class="p-footer"><div class="p-price">Rp ' + Number(firstP[4]).toLocaleString('id-ID') + '</div></div></div>';
         if (totalStokVarian <= 0) { d.style.opacity = '0.5'; }
-        d.onclick = function () { openVariantModal(nama, variants); };
+               d.onclick = function () { openVariantModal(nama, variants); };
         fragment.appendChild(d);
+      }
+      if (f.length > fShow.length) {
+        let more = document.createElement('div');
+        more.style.cssText = 'grid-column:1/-1; text-align:center; padding:10px;';
+        let mb = document.createElement('button');
+        mb.className = 'btn-action'; mb.style.padding = '10px 20px';
+        mb.innerText = 'Tampilkan lebih banyak (' + (f.length - fShow.length) + ' produk lagi)';
+        mb.onclick = function () { posRenderLimit += 60; renderProduk(); };
+        more.appendChild(mb);
+        fragment.appendChild(more);
       }
       c.innerHTML = ''; c.appendChild(fragment);
     }
@@ -1914,7 +1927,44 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
       let pv2 = document.getElementById('previewSetStrukLogo');
       if (currentSettings[5]) { pv2.src = currentSettings[5]; pv2.style.display = 'block'; } else pv2.style.display = 'none';
     }
-
+    function openHppModal() {
+      let html = '<table class="data-table" style="min-width:100%;"><thead><tr><th>Produk</th><th style="width:100px;">Harga Jual</th><th style="width:120px;">HPP (Modal)</th></tr></thead><tbody>';
+      allProduk.forEach(function(p) {
+        html += '<tr><td style="font-size:12px;">' + esc(p[1]) + (p[2] ? ' ' + esc(p[2]) : '') + (p[3] ? ' (' + esc(p[3]) + ')' : '') + '</td><td style="font-size:12px; text-align:right;">' + Number(p[4]).toLocaleString('id-ID') + '</td><td><input type="text" class="hpp-input" data-id="' + esc(p[0]) + '" value="' + (p[12] ? Number(p[12]).toLocaleString('id-ID') : '') + '" oninput="formatRupiah(this)" style="width:110px; text-align:right; padding:4px 6px; border:1px solid #ddd; border-radius:4px;"></td></tr>';
+      });
+      html += '</tbody></table>';
+      document.getElementById('hppList').innerHTML = html;
+      document.getElementById('modalHpp').style.display = 'flex';
+    }
+    function applyHppPercent(onlyEmpty) {
+      let pct = parseFloat(document.getElementById('hppBulkPercent').value);
+      if (!pct || pct <= 0) { showToast('Isi persentase dulu (cth: 90)', true); return; }
+      document.querySelectorAll('#hppList .hpp-input').forEach(function(inp) {
+        if (onlyEmpty && inp.value) return;
+        let p = allProduk.find(function(x) { return x[0] === inp.getAttribute('data-id'); });
+        if (p) inp.value = Math.round(Number(p[4]) * pct / 100).toLocaleString('id-ID');
+      });
+    }
+    function simpanHppMassal() {
+      let items = [];
+      document.querySelectorAll('#hppList .hpp-input').forEach(function(inp) {
+        items.push({ id: inp.getAttribute('data-id'), hpp: parseRupiah(inp.value) });
+      });
+      if (items.length === 0) { showToast('Tidak ada data!', true); return; }
+      let btn = document.getElementById('btnSaveHpp');
+      btn.disabled = true; btn.innerHTML = '<div class="spinner-white"></div> Menyimpan...';
+      callApi('bulkUpdateHpp', { items: items }).then(function() {
+        showToast('HPP ' + items.length + ' produk berhasil disimpan!');
+        closeModal('modalHpp');
+        refreshProdukFromServer();
+        if (document.getElementById('view-produk').classList.contains('active')) loadTableProduk();
+        btn.disabled = false; btn.innerHTML = 'Simpan Semua HPP';
+      }).catch(function(err) {
+        showToast('Gagal: ' + (err && err.message ? err.message : ''), true);
+        btn.disabled = false; btn.innerHTML = 'Simpan Semua HPP';
+      });
+    }
+    
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
     let scannerInstance = null; let scannerTargetContext = null; let scannerBusy = false; let scannerLibLoaded = false; let scannerLibLoading = false;
