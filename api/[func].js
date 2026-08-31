@@ -81,8 +81,8 @@ module.exports = async (req, res) => {
         id: data.id, nama: data.nama, varian: data.varian, storage: data.storage, 
         harga: Number(data.harga), stok: 0, 
         kategori: data.kategori, foto: data.foto, imeis: [],
-        harga_modal: Number(data.hargaModal) || 0,
-        is_konsinyasi: data.isKonsinyasi || false,
+harga_modal: Number(data.hpp) || 0,
+             is_konsinyasi: data.isKonsinyasi || false,
         mitra_id: data.isKonsinyasi ? data.mitraId : null,
         harga_setoran: data.isKonsinyasi ? (Number(data.hargaSetoran) || 0) : 0
       };
