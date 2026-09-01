@@ -366,8 +366,9 @@
             <div class="form-group"><label>Alamat</label><input type="text" id="setAlamatInput"></div>
             <div class="form-group"><label>Nomor WhatsApp</label><input type="text" id="setTelpInput"></div>
             <div class="form-group"><label>Footer Struk</label><input type="text" id="setFooterInput"></div>
-            <div class="form-group"><label>Logo Toko (Tampil di Sidebar)</label><input type="file" id="setLogoFile" accept="image/*" onchange="previewImage(this, 'previewSetLogo')"><img id="previewSetLogo" class="preview-img" style="display:none;"></div>
-            <div class="form-group"><label>Logo Struk (Tampil di print struk)</label><input type="file" id="setStrukLogoFile" accept="image/*" onchange="previewImage(this, 'previewSetStrukLogo')"><img id="previewSetStrukLogo" class="preview-img" style="display:none;"></div>
+                       <div class="form-group"><label>Logo Toko (Tampil di Sidebar)</label><input type="file" id="setLogoFile" accept="image/*" onchange="previewImage(this, 'previewSetLogo')"><img id="previewSetLogo" class="preview-img" style="display:none;"> <button type="button" class="btn-action danger" onclick="hapusFotoPengaturan('previewSetLogo', 'toko')">Hapus Foto</button></div>
+            <div class="form-group"><label>Logo Struk (Tampil di print struk)</label><input type="file" id="setStrukLogoFile" accept="image/*" onchange="previewImage(this, 'previewSetStrukLogo')"><img id="previewSetStrukLogo" class="preview-img" style="display:none;"> <button type="button" class="btn-action danger" onclick="hapusFotoPengaturan('previewSetStrukLogo', 'struk')">Hapus Foto</button></div>
+            
 
             <button class="btn-save" id="btnSaveSetting" onclick="savePengaturan()">Simpan Pengaturan</button>
           </div>
@@ -606,6 +607,7 @@
     let usbDevice = null;
     let bleChar = null;
     let allRiwayatData = [];
+        let logoTokoDihapus = false; let logoStrukDihapus = false;
         let posRenderLimit = 60;
 
     var MENU = [
@@ -1902,13 +1904,16 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
         logoToko: getBase64Image('previewSetLogo'),
         logoStruk: getBase64Image('previewSetStrukLogo')
       };
-      if (!data.logoToko && currentSettings[4]) data.logoToko = currentSettings[4];
-      if (!data.logoStruk && currentSettings[5]) data.logoStruk = currentSettings[5];
+           if (logoTokoDihapus) data.logoToko = '';
+      else if (!data.logoToko && currentSettings[4]) data.logoToko = currentSettings[4];
+      if (logoStrukDihapus) data.logoStruk = '';
+      else if (!data.logoStruk && currentSettings[5]) data.logoStruk = currentSettings[5];
       
       callApi('savePengaturan', data).then(function() {
         currentSettings = [data.nama, data.alamat, data.telp, data.footer, data.logoToko, data.logoStruk];
         if (data.logoToko) { document.getElementById('sidebarLogo').src = data.logoToko; document.getElementById('sidebarLogo').style.display = 'block'; document.getElementById('favicon').href = data.logoToko; }
         document.getElementById('sidebarTitle').innerText = data.nama;
+               logoTokoDihapus = false; logoStrukDihapus = false;
         showToast('Pengaturan disimpan!');
         btn.innerText = 'Simpan Pengaturan'; btn.disabled = false;
       }).catch(function(err) {
@@ -1917,7 +1922,8 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
       });
     }
 
-        function loadPengaturanForm() {
+            function loadPengaturanForm() {
+      logoTokoDihapus = false; logoStrukDihapus = false;
       document.getElementById('setNamaInput').value = currentSettings[0] || '';
       document.getElementById('setAlamatInput').value = currentSettings[1] || '';
       document.getElementById('setTelpInput').value = currentSettings[2] || '';
@@ -1967,6 +1973,13 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
         showToast('Gagal: ' + (err && err.message ? err.message : ''), true);
         btn.disabled = false; btn.innerHTML = 'Simpan Semua HPP';
       });
+    }
+
+        function hapusFotoPengaturan(previewId, jenis) {
+      let pv = document.getElementById(previewId);
+      pv.src = ''; pv.style.display = 'none';
+      if (jenis === 'toko') logoTokoDihapus = true; else logoStrukDihapus = true;
+      showToast('Foto dihapus. Klik "Simpan Pengaturan" untuk menerapkan.');
     }
     
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
@@ -2102,13 +2115,14 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
       sendToPrinter(data).then(() => showToast('Test print berhasil dikirim!')).catch(err => showToast('Gagal test print: ' + err.message, true));
     }
 
-        function logoToEscPosRaster(dataUrl, targetWidth) {
-      targetWidth = targetWidth || 384;
+           function logoToEscPosRaster(dataUrl, targetWidth, maxHeight) {
+      targetWidth = targetWidth || 320;
+      maxHeight = maxHeight || 120;
       return new Promise(function (resolve) {
         let img = new Image();
         img.onload = function () {
           try {
-            let scale = Math.min(1, targetWidth / img.width);
+            let scale = Math.min(targetWidth / img.width, maxHeight / img.height, 1);
             let w = Math.max(1, Math.floor(img.width * scale));
             let h = Math.max(1, Math.floor(img.height * scale));
             let canvas = document.createElement('canvas');
@@ -2137,7 +2151,20 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
       });
     }
 
-        async function printStrukEscPos() {
+            let printLock = false;
+    async function printStrukEscPos() {
+      if (printLock) { showToast('Masih mencetak, tunggu sebentar...', true); return; }
+      printLock = true;
+      try {
+        await prosesCetakStruk();
+      } catch (err) {
+        showToast('Gagal print: ' + (err && err.message ? err.message : ''), true);
+      } finally {
+        printLock = false;
+      }
+    }
+
+    async function prosesCetakStruk() {
       let strukArea = document.getElementById('strukArea');
       if (!strukArea) return;
 
@@ -2148,7 +2175,7 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
 
       // LOGO tercetak sebagai gambar raster (fallback: nama toko besar)
       let logoUrl = currentSettings[5] || currentSettings[4] || '';
-      let logoData = logoUrl ? await logoToEscPosRaster(logoUrl, 384) : null;
+      let logoData = logoUrl ? await logoToEscPosRaster(logoUrl, 320, 120) : null;
       if (logoData) {
         data.push(encoder.encode('\x1B\x61\x01'));
         data.push(logoData);
@@ -2215,19 +2242,21 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
         offset += chunk.length;
       });
 
-      sendToPrinter(combinedData).then(() => showToast('Struk berhasil dikirim!')).catch(err => showToast('Gagal print: ' + err.message, true));
+      await sendToPrinter(combinedData);
+      showToast('Struk berhasil dikirim!');
     }
 
     async function sendToPrinter(data) {
       if (usbDevice) {
         await usbDevice.transferOut(1, data);
-      } else if (bleChar) {
-        let chunkSize = 180;
+            } else if (bleChar) {
+        let chunkSize = 64;
         let offset = 0;
         while (offset < data.length) {
           let chunk = data.slice(offset, offset + chunkSize);
           await bleChar.writeValue(chunk);
           offset += chunkSize;
+          if (offset % 512 === 0) await new Promise(r => setTimeout(r, 30));
         }
       } else {
         throw new Error('Belum ada printer terhubung. Hubungkan di menu Pengaturan Printer.');
