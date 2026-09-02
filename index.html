@@ -2095,8 +2095,16 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
 
     function connectBlePrinter() {
       if (!navigator.bluetooth) { showToast('Browser tidak mendukung Web Bluetooth', true); return; }
-      navigator.bluetooth.requestDevice({ filters: [{ services: ['000018f0-0000-1000-8000-00805f9b34fb'] }] })
-        .then(device => device.gatt.connect())
+            navigator.bluetooth.requestDevice({ filters: [{ services: ['000018f0-0000-1000-8000-00805f9b34fb'] }] })
+        .then(device => {
+          device.addEventListener('gattserverdisconnected', function() {
+            bleChar = null;
+            let st = document.getElementById('bleStatus');
+            if (st) st.innerText = 'Status: TERPUTUS - sambungkan ulang';
+            showToast('Printer Bluetooth terputus! Buka Pengaturan Printer dan sambungkan ulang.', true);
+          });
+          return device.gatt.connect();
+        })
         .then(server => server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb'))
         .then(service => service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb'))
         .then(char => {
@@ -2175,7 +2183,102 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
         img.src = dataUrl;
       });
     }
-            let printLock = false;
+                let printLock = false;
+
+    function withTimeout(promise, ms) {
+      return Promise.race([
+        promise,
+        new Promise(function (_, reject) { setTimeout(function () { reject(new Error('Timeout ' + (ms / 1000) + ' detik - printer tidak merespons')); }, ms); })
+      ]);
+    }
+
+    async function buildStrukEscPosBytes(withLogo) {
+      let strukArea = document.getElementById('strukArea');
+      if (!strukArea) throw new Error('Struk tidak ditemukan');
+
+      let encoder = new TextEncoder();
+      let data = [];
+      data.push(encoder.encode('\x1B\x40')); // Initialize
+
+      let logoTercetak = false;
+      let logoUrl = (withLogo) ? (currentSettings[5] || currentSettings[4] || '') : '';
+      if (logoUrl) {
+        let logoData = null;
+        try { logoData = await withTimeout(logoToEscPosRaster(logoUrl, 384, 190), 4000); } catch (e) { logoData = null; }
+        if (logoData) {
+          data.push(encoder.encode('\x1B\x61\x01'));
+          data.push(logoData);
+          data.push(encoder.encode('\x0A'));
+          logoTercetak = true;
+        }
+      }
+      if (!logoTercetak) {
+        data.push(encoder.encode('\x1B\x61\x01\x1D\x21\x11'));
+        data.push(encoder.encode(currentSettings[0] || 'Toko'));
+        data.push(encoder.encode('\x1D\x21\x00\x0A'));
+      }
+      data.push(encoder.encode('\x1B\x61\x00'));
+
+      if (currentSettings[1]) data.push(encoder.encode('\x1B\x61\x01' + currentSettings[1] + '\x1B\x61\x00\x0A'));
+      if (currentSettings[2]) data.push(encoder.encode('\x1B\x61\x01' + currentSettings[2] + '\x1B\x61\x00\x0A'));
+      data.push(encoder.encode('------------------------------\n'));
+
+      let infoItems = strukArea.querySelectorAll('div[style*="display:flex; justify-content:space-between;"]');
+      infoItems.forEach(item => {
+        let spans = item.querySelectorAll('span');
+        if (spans.length === 2) {
+          data.push(encoder.encode(spans[0].innerText + ': ' + spans[1].innerText + '\n'));
+        }
+      });
+      data.push(encoder.encode('------------------------------\n'));
+
+      let itemRows = strukArea.querySelectorAll('.struk-item');
+      itemRows.forEach(row => {
+        let spans = row.querySelectorAll('span');
+        if (spans.length === 2) {
+          data.push(encoder.encode(spans[0].innerText + '\n'));
+          data.push(encoder.encode('   ' + spans[1].innerText + '\n'));
+        }
+      });
+      data.push(encoder.encode('------------------------------\n'));
+
+      let totalRows = strukArea.querySelectorAll('.struk-total .t-row');
+      totalRows.forEach(row => {
+        let spans = row.querySelectorAll('span');
+        if (spans.length === 2) {
+          let isBold = row.classList.contains('t-bold');
+          if (isBold) data.push(encoder.encode('\x1B\x45\x01\x1B\x61\x01'));
+          data.push(encoder.encode(spans[0].innerText + ': ' + spans[1].innerText + '\n'));
+          if (isBold) data.push(encoder.encode('\x1B\x45\x00\x1B\x61\x00'));
+        }
+      });
+      data.push(encoder.encode('------------------------------\n'));
+
+      let footer = strukArea.querySelector('p[style*="margin-top:10px; font-weight:bold;"]');
+      if (footer) {
+        data.push(encoder.encode('\x1B\x61\x01' + footer.innerText + '\x1B\x61\x00\x0A'));
+      }
+      data.push(encoder.encode('\x1B\x61\x01\x0A\x0A\x0A\x0A'));
+      data.push(encoder.encode('\x1D\x56\x42\x00'));
+
+      let combinedData = new Uint8Array(data.reduce((acc, curr) => acc + curr.length, 0));
+      let offset = 0;
+      data.forEach(chunk => { combinedData.set(chunk, offset); offset += chunk.length; });
+      return combinedData;
+    }
+
+    async function prosesCetakStruk() {
+      let bytes = await withTimeout(buildStrukEscPosBytes(true), 8000);
+      try {
+        await withTimeout(sendToPrinter(bytes), 30000);
+      } catch (err1) {
+        showToast('Gagal saat cetak dengan logo, mencoba ulang tanpa logo...', true);
+        bytes = await buildStrukEscPosBytes(false);
+        await withTimeout(sendToPrinter(bytes), 30000);
+      }
+      showToast('Struk berhasil dikirim!');
+    }
+
     async function printStrukEscPos() {
       if (printLock) { showToast('Masih mencetak, tunggu sebentar...', true); return; }
       printLock = true;
@@ -2188,99 +2291,17 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
       }
     }
 
-    async function prosesCetakStruk() {
-      let strukArea = document.getElementById('strukArea');
-      if (!strukArea) return;
-
-      let encoder = new TextEncoder();
-      let data = [];
-
-      data.push(encoder.encode('\x1B\x40')); // Initialize
-
-      // LOGO tercetak sebagai gambar raster (fallback: nama toko besar)
-      let logoUrl = currentSettings[5] || currentSettings[4] || '';
-      let logoData = logoUrl ? await logoToEscPosRaster(logoUrl, 384, 190) : null;
-      if (logoData) {
-        data.push(encoder.encode('\x1B\x61\x01'));
-        data.push(logoData);
-        data.push(encoder.encode('\x0A\x1B\x61\x00'));
-      } else {
-        data.push(encoder.encode('\x1B\x61\x01\x1D\x21\x11'));
-        data.push(encoder.encode(currentSettings[0] || 'Toko'));
-        data.push(encoder.encode('\x1D\x21\x00\x0A\x1B\x61\x00'));
-      }
-      
-      // Address
-      if (currentSettings[1]) data.push(encoder.encode('\x1B\x61\x01' + currentSettings[1] + '\x1B\x61\x00\x0A'));
-      if (currentSettings[2]) data.push(encoder.encode('\x1B\x61\x01' + currentSettings[2] + '\x1B\x61\x00\x0A'));
-      
-      data.push(encoder.encode('------------------------------\n'));
-      
-      // Info
-      let infoItems = strukArea.querySelectorAll('div[style*="display:flex; justify-content:space-between;"]');
-      infoItems.forEach(item => {
-        let spans = item.querySelectorAll('span');
-        if (spans.length === 2) {
-          data.push(encoder.encode(spans[0].innerText + ': ' + spans[1].innerText + '\n'));
-        }
-      });
-      data.push(encoder.encode('------------------------------\n'));
-
-      // Items
-      let itemRows = strukArea.querySelectorAll('.struk-item');
-      itemRows.forEach(row => {
-        let spans = row.querySelectorAll('span');
-        if (spans.length === 2) {
-          data.push(encoder.encode(spans[0].innerText + '\n'));
-          data.push(encoder.encode('   ' + spans[1].innerText + '\n'));
-        }
-      });
-      data.push(encoder.encode('------------------------------\n'));
-
-      // Total
-      let totalRows = strukArea.querySelectorAll('.struk-total .t-row');
-      totalRows.forEach(row => {
-        let spans = row.querySelectorAll('span');
-        if (spans.length === 2) {
-          let isBold = row.classList.contains('t-bold');
-          if (isBold) data.push(encoder.encode('\x1B\x45\x01\x1B\x61\x01')); // Bold, Center
-          data.push(encoder.encode(spans[0].innerText + ': ' + spans[1].innerText + '\n'));
-          if (isBold) data.push(encoder.encode('\x1B\x45\x00\x1B\x61\x00')); // Reset bold, left
-        }
-      });
-      data.push(encoder.encode('------------------------------\n'));
-
-      // Footer
-      let footer = strukArea.querySelector('p[style*="margin-top:10px; font-weight:bold;"]');
-      if (footer) {
-        data.push(encoder.encode('\x1B\x61\x01' + footer.innerText + '\x1B\x61\x00\x0A'));
-      }
-      
-      data.push(encoder.encode('\x1B\x61\x01\x0A\x0A\x0A\x0A')); // Feed
-      data.push(encoder.encode('\x1D\x56\x42\x00')); // Cut
-
-      let combinedData = new Uint8Array(data.reduce((acc, curr) => acc + curr.length, 0));
-      let offset = 0;
-      data.forEach(chunk => {
-        combinedData.set(chunk, offset);
-        offset += chunk.length;
-      });
-
-      await sendToPrinter(combinedData);
-      showToast('Struk berhasil dikirim!');
-    }
-
     async function sendToPrinter(data) {
       if (usbDevice) {
         await usbDevice.transferOut(1, data);
-            } else if (bleChar) {
+      } else if (bleChar) {
         let chunkSize = 64;
         let offset = 0;
         while (offset < data.length) {
           let chunk = data.slice(offset, offset + chunkSize);
           await bleChar.writeValue(chunk);
           offset += chunkSize;
-          if (offset % 512 === 0) await new Promise(r => setTimeout(r, 30));
+          await new Promise(r => setTimeout(r, 12)); // jeda napas TIAP paket, wajib untuk printer murah
         }
       } else {
         throw new Error('Belum ada printer terhubung. Hubungkan di menu Pengaturan Printer.');
