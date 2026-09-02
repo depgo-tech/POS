@@ -388,39 +388,54 @@ harga_modal: Number(data.hpp) || 0,
       return res.status(400).json({ error: "Produk tidak ditemukan" });
     }
 
-    if (func === 'addStokKeluar') {
-      const { produkId, produkNama, jumlah, keterangan, imei } = body;
+            if (func === 'addStokKeluar') {
+      const { produkId, produkNama, jumlah, keterangan, imeiText, imei } = body;
       const { data: prod } = await supabase.from('produk').select('*').eq('id', produkId).single();
-      if (prod) {
-        let stokLama = Number(prod.stok);
-        let newImeis = prod.imeis || [];
-        let stokBaru = stokLama;
-        let ket = keterangan || 'Rusak/Hilang';
-        let jmlLog = 0;
+      if (!prod) return res.status(400).json({ error: "Produk tidak ditemukan" });
 
-        if (imei) {
-          newImeis = newImeis.filter(im => im.imei !== imei);
-          stokBaru = newImeis.length;
-          jmlLog = 1;
-          ket = 'Buang IMEI: ' + imei;
-          await supabase.from('produk').update({ stok: stokBaru, imeis: newImeis }).eq('id', produkId);
-        } else {
-          if (jumlah <= 0) return res.status(400).json({ error: "Jumlah tidak valid" });
-          if (stokLama < Number(jumlah)) return res.status(400).json({ error: "Stok sistem tidak cukup" });
-          stokBaru = stokLama - Number(jumlah);
-          jmlLog = Number(jumlah);
-          await supabase.from('produk').update({ stok: stokBaru }).eq('id', produkId);
-        }
+      let stokLama = Number(prod.stok) || 0;
+      let newImeis = prod.imeis || [];
+      let stokBaru = stokLama;
+      let ket = keterangan || 'Rusak/Hilang';
+      let jmlLog = 0;
 
-                let id = 'LOG' + Date.now() + Math.floor(Math.random() * 900 + 100);
-        let tgl = new Date().toISOString();
-        await supabase.from('stok_log').insert([{
-          id, tgl, produk_id: produkId, produk_nama: produkNama,
-          tipe: 'keluar', jumlah: -jmlLog, stok_sistem: stokLama, stok_fisik: stokBaru, keterangan: ket
-        }]);
-        return res.json("Sukses");
+      if (imeiText) {
+        // Stok keluar via daftar IMEI (1 baris = 1 IMEI)
+        let imeiList = String(imeiText).split('\n').map(s => s.trim()).filter(Boolean);
+        if (imeiList.length === 0) return res.status(400).json({ error: "IMEI wajib diisi" });
+        let notFound = [];
+        imeiList.forEach(i => {
+          let before = newImeis.length;
+          newImeis = newImeis.filter(im => im.imei !== i);
+          if (newImeis.length === before) notFound.push(i);
+        });
+        if (notFound.length > 0) return res.status(400).json({ error: 'IMEI tidak ditemukan di stok: ' + notFound.join(', ') });
+        stokBaru = newImeis.length;
+        jmlLog = imeiList.length;
+        ket = 'Buang IMEI (' + imeiList.length + ' unit): ' + imeiList.join(', ');
+        await supabase.from('produk').update({ stok: stokBaru, imeis: newImeis }).eq('id', produkId);
+      } else if (imei) {
+        newImeis = newImeis.filter(im => im.imei !== imei);
+        stokBaru = newImeis.length;
+        jmlLog = 1;
+        ket = 'Buang IMEI: ' + imei;
+        await supabase.from('produk').update({ stok: stokBaru, imeis: newImeis }).eq('id', produkId);
+      } else {
+        let jml = Number(jumlah);
+        if (!jml || jml <= 0) return res.status(400).json({ error: "Jumlah tidak valid" });
+        if (stokLama < jml) return res.status(400).json({ error: "Stok sistem tidak cukup" });
+        stokBaru = stokLama - jml;
+        jmlLog = jml;
+        await supabase.from('produk').update({ stok: stokBaru }).eq('id', produkId);
       }
-      return res.status(400).json({ error: "Produk tidak ditemukan" });
+
+      let id = 'LOG' + Date.now() + Math.floor(Math.random() * 900 + 100);
+      let tgl = new Date().toISOString();
+      await supabase.from('stok_log').insert([{
+        id, tgl, produk_id: produkId, produk_nama: produkNama,
+        tipe: 'keluar', jumlah: -jmlLog, stok_sistem: stokLama, stok_fisik: stokBaru, keterangan: ket
+      }]);
+      return res.json("Sukses");
     }
 
     if (func === 'submitOpname') {
