@@ -1658,7 +1658,7 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
       if (cb.checked) {
         area.classList.remove('hidden');
         if (splitPayments.length === 0) {
-          splitPayments.push({ metode: 'Cash', jumlah: 0 });
+          splitPayments.push({ metode: 'Cash', jumlah: 0, namaCicilan: '' });
           renderSplitPayments();
         }
       } else {
@@ -1669,7 +1669,7 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
     }
 
     function addSplitPayment() {
-      splitPayments.push({ metode: 'Cash', jumlah: 0 });
+      splitPayments.push({ metode: 'Cash', jumlah: 0, namaCicilan: '' });
       renderSplitPayments();
     }
 
@@ -1682,19 +1682,25 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
     function updateSplitPayment(idx, field, value) {
       if (field === 'jumlah') value = parseRupiah(value);
       splitPayments[idx][field] = value;
+      if (field === 'metode') renderSplitPayments();
       hitungTotal();
     }
 
     function renderSplitPayments() {
       let html = '';
-      let bankOptionsHtml = '<option value="Cash">Cash</option><option value="QRIS">QRIS</option><option value="Transfer BCA">Transfer BCA</option><option value="Transfer Mandiri">Transfer Mandiri</option><option value="Transfer BRI">Transfer BRI</option><option value="Transfer BNI">Transfer BNI</option><option value="Transfer CIMB Niaga">Transfer CIMB Niaga</option><option value="Transfer Permata">Transfer Permata</option><option value="Transfer BSI">Transfer BSI</option><option value="Transfer Danamon">Transfer Danamon</option><option value="Transfer BTN">Transfer BTN</option><option value="Transfer OCBC">Transfer OCBC</option><option value="GoPay">GoPay</option><option value="DANA">DANA</option><option value="OVO">OVO</option><option value="ShopeePay">ShopeePay</option><option value="LinkAja">LinkAja</option>';
+      let bankOptionsHtml = '<option value="Cash">Cash</option><option value="QRIS">QRIS</option><option value="Transfer BCA">Transfer BCA</option><option value="Transfer Mandiri">Transfer Mandiri</option><option value="Transfer BRI">Transfer BRI</option><option value="Transfer BNI">Transfer BNI</option><option value="Transfer CIMB Niaga">Transfer CIMB Niaga</option><option value="Transfer Permata">Transfer Permata</option><option value="Transfer BSI">Transfer BSI</option><option value="Transfer Danamon">Transfer Danamon</option><option value="Transfer BTN">Transfer BTN</option><option value="Transfer OCBC">Transfer OCBC</option><option value="GoPay">GoPay</option><option value="DANA">DANA</option><option value="OVO">OVO</option><option value="ShopeePay">ShopeePay</option><option value="LinkAja">LinkAja</option><option value="Cicilan">Cicilan</option>';
       splitPayments.forEach((sp, idx) => {
         let displayJumlah = sp.jumlah ? sp.jumlah.toLocaleString('id-ID') : '';
         let opts = bankOptionsHtml.replace('value="' + sp.metode + '"', 'value="' + sp.metode + '" selected');
-        html += `<div style="display:flex; gap:5px; margin-bottom:5px;">
-          <select onchange="updateSplitPayment(${idx}, 'metode', this.value)" style="flex:1; padding:6px; border:1px solid #ddd; border-radius:4px;">
+        let cicilanInput = '';
+        if (sp.metode === 'Cicilan') {
+          cicilanInput = '<input type="text" value="' + esc(sp.namaCicilan || '') + '" oninput="updateSplitPayment(' + idx + ', \'namaCicilan\', this.value)" placeholder="Nama cicilan" style="flex:1.2; min-width:90px; padding:6px; border:1px solid #ddd; border-radius:4px; font-size:12px;">';
+        }
+        html += `<div style="display:flex; gap:5px; margin-bottom:5px; flex-wrap:wrap;">
+          <select onchange="updateSplitPayment(${idx}, 'metode', this.value)" style="flex:1; min-width:110px; padding:6px; border:1px solid #ddd; border-radius:4px;">
             ${opts}
           </select>
+          ${cicilanInput}
           <input type="text" value="${displayJumlah}" oninput="formatRupiah(this); updateSplitPayment(${idx}, 'jumlah', this.value)" placeholder="Rp" style="width:80px; padding:6px; border:1px solid #ddd; border-radius:4px; text-align:right;">
           <button onclick="removeSplitPayment(${idx})" style="background:#dc3545; color:#fff; border:none; padding:6px 10px; border-radius:4px; cursor:pointer;">X</button>
         </div>`;
@@ -1746,7 +1752,13 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
           btn.disabled = false;
           return;
         }
-        splitPayData = splitPayments;
+        splitPayData = splitPayments.map(function (sp) {
+          if (sp.metode === 'Cicilan') {
+            let nm = (sp.namaCicilan || '').trim();
+            return { metode: nm ? ('Cicilan - ' + nm) : 'Cicilan', jumlah: sp.jumlah };
+          }
+          return { metode: sp.metode, jumlah: sp.jumlah };
+        });
       }
 
       callApi('simpanTransaksi', { 
