@@ -1696,6 +1696,9 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
         if (sp.metode === 'Cicilan') {
           extraInput = '<input type="text" value="' + esc(sp.namaCicilan || '') + '" oninput="updateSplitPayment(' + idx + ', \'namaCicilan\', this.value)" placeholder="Nama cicilan" style="flex:1.2; min-width:90px; padding:6px; border:1px solid #ddd; border-radius:4px; font-size:12px;">';
         }
+        if (sp.metode === 'Tukar Tambah') {
+          extraInput = '<input type="text" value="' + esc(sp.namaBarang || '') + '" oninput="updateSplitPayment(' + idx + ', \'namaBarang\', this.value)" placeholder="Nama barang tukar" style="flex:1.2; min-width:90px; padding:6px; border:1px solid #ddd; border-radius:4px; font-size:12px;">';
+        }
         let placeholderNilai = (sp.metode === 'Tukar Tambah') ? 'Nilai Tukar' : 'Rp';
         html += `<div style="display:flex; gap:5px; margin-bottom:5px; flex-wrap:wrap;">
           <select onchange="updateSplitPayment(${idx}, 'metode', this.value)" style="flex:1; min-width:110px; padding:6px; border:1px solid #ddd; border-radius:4px;">
@@ -1754,6 +1757,7 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
       
       let splitPayData = [];
       let ttDariSplit = 0;
+      let ttNamaDariSplit = '';
       if (document.getElementById('useSplitPayment').checked && splitPayments.length > 0) {
         let adaTtSplit = splitPayments.some(function (sp) { return sp.metode === 'Tukar Tambah' && sp.jumlah > 0; });
         if (adaTtSplit && calc.ttNilai > 0) {
@@ -1776,10 +1780,15 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
             let nm = (sp.namaCicilan || '').trim();
             return { metode: nm ? ('Cicilan - ' + nm) : 'Cicilan', jumlah: sp.jumlah };
           }
+          if (sp.metode === 'Tukar Tambah') {
+            let nm = (sp.namaBarang || '').trim();
+            return { metode: nm ? ('Tukar Tambah - ' + nm) : 'Tukar Tambah', jumlah: sp.jumlah };
+          }
           return { metode: sp.metode, jumlah: sp.jumlah };
         });
-        if (splitPayData.length === 1 && splitPayData[0].metode === 'Tukar Tambah') {
-          ttDariSplit = splitPayData[0].jumlah;
+        if (splitPayments.length === 1 && splitPayments[0].metode === 'Tukar Tambah') {
+          ttDariSplit = splitPayments[0].jumlah;
+          ttNamaDariSplit = (splitPayments[0].namaBarang || '').trim();
           splitPayData = [];
         }
       }
@@ -1789,7 +1798,7 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
         pelanggan: pel, 
         diskonStr: calc.diskonStr, 
         metode: metode,
-        ttNama: ttDariSplit > 0 ? '' : calc.ttNama,
+        ttNama: ttDariSplit > 0 ? ttNamaDariSplit : calc.ttNama,
         ttImei: ttDariSplit > 0 ? '' : calc.ttImei,
         ttNilai: (calc.ttNilai || 0) + ttDariSplit,
                 masaGaransi: calc.masaGaransi,
