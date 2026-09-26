@@ -39,8 +39,13 @@ function parseMetodeStr(metodeStr, fallbackTotal) {
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
-  const { func } = req.query;
+    const { func } = req.query;
   const body = req.body || {};
+
+  const APP_KEY = process.env.APP_KEY;
+  if (APP_KEY && req.headers['x-app-key'] !== APP_KEY) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
 
   try {
     if (func === 'getPengaturan') {
