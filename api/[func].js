@@ -454,7 +454,7 @@ harga_modal: Number(data.hpp) || 0,
           let selisih = Number(item.stokFisik) - Number(item.stokSistem);
           promises.push(supabase.from('produk').update({ stok: Number(item.stokFisik) }).eq('id', item.id));
           logs.push({
-            id: 'LOG' + Date.now() + Math.floor(Math.random() * 1000),
+                       id: 'LOG' + Date.now() + Math.floor(Math.random() * 900000 + 100000),
             tgl, produk_id: item.id, produk_nama: item.nama,
             tipe: 'opname', jumlah: selisih, stok_sistem: Number(item.stokSistem), stok_fisik: Number(item.stokFisik),
             keterangan: 'Adjustment Opname'
@@ -493,8 +493,8 @@ harga_modal: Number(data.hpp) || 0,
     if (func === 'getDashboardData') {
       const { startDate, endDate } = body;
       const { start, end } = getRangeWib(startDate, endDate);
-      const { data: trxData } = await supabase.from('transaksi').select('*');
-      const { data: prodData } = await supabase.from('produk').select('*');
+            const { data: trxData } = await supabase.from('transaksi').select('tgl, total, hpp');
+      const { data: prodData } = await supabase.from('produk').select('stok, imeis, nama, varian');
       let penjualanPeriode = 0, hppPeriode = 0, trxPeriode = 0, totalStok = 0, lowStok = [];
       let chartLabels = [], chartData = [], chartDateMap = {};
       for (let i = 6; i >= 0; i--) {
@@ -634,22 +634,19 @@ harga_modal: Number(data.hpp) || 0,
       return res.json("Sukses");
     }
 
-    if (func === 'savePengaturan') {
+        if (func === 'savePengaturan') {
       const data = body;
-      await supabase.from('pengaturan').upsert([{
+      const { data: existing } = await supabase.from('pengaturan').select('*').eq('id', 1).single();
+      const row = Object.assign({}, existing || {}, {
         id: 1,
         nama_toko: data.nama,
         alamat: data.alamat,
         telp: data.telp,
         footer: data.footer,
         logo_toko: data.logoToko,
-        logo_struk: data.logoStruk,
-        qris_img: data.qrisImg,
-        rek_bca: data.rekBca,
-        rek_mandiri: data.rekMandiri,
-        rek_gopay: data.rekGopay,
-        rek_dana: data.rekDana
-      }]);
+        logo_struk: data.logoStruk
+      });
+      await supabase.from('pengaturan').upsert([row]);
       return res.json("Sukses");
     }
 
