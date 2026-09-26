@@ -563,9 +563,9 @@
     function esc(s) { if (s === null || s === undefined) return ''; return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;'); }
 
     function callApi(funcName, args) {
-      return fetch(`/api/${funcName}`, {
+            return fetch(`/api/${funcName}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-app-key': 'ISI_KUNCI_YANG_SAMA_DENGAN_VERCEL' },
         body: JSON.stringify(args || {})
       }).then(r => {
         if (!r.ok) {
