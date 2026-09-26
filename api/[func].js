@@ -368,8 +368,11 @@ harga_modal: Number(data.hpp) || 0,
         let ket = keterangan || 'Restock';
         let jmlLog = 0;
 
-        if (imeiText) {
-          let newImeiList = String(imeiText).split('\n').map(s => s.trim()).filter(Boolean);
+                if (imeiText) {
+          let incoming = String(imeiText).split('\n').map(s => s.trim()).filter(Boolean);
+          let existingSet = new Set(newImeis.map(im => im.imei));
+          let newImeiList = [...new Set(incoming)].filter(i => !existingSet.has(i));
+          if (newImeiList.length === 0) return res.status(400).json({ error: 'Semua IMEI sudah ada di stok (duplikat).' });
           newImeiList.forEach(i => newImeis.push({ imei: i, status: 'tersedia' }));
           stokBaru = stokLama + newImeiList.length;
           jmlLog = newImeiList.length;
