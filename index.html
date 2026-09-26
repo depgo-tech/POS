@@ -1069,7 +1069,7 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
     function openOpnameModal() {
       let list = document.getElementById('opnameList');
       let html = '<table class="data-table" style="min-width:100%;"><thead><tr><th>Produk</th><th>Stok Sistem</th><th>Stok Fisik</th></tr></thead><tbody>';
-      allProduk.forEach(function(p) {
+      allProduk.filter(function(p) { return !(p[8] && p[8].length > 0); }).forEach(function(p) {
         html += `<tr><td>${esc(p[1])} ${esc(p[2])}</td><td style="text-align:center;">${p[5]}</td><td style="text-align:center;"><input type="number" class="opname-input" data-id="${p[0]}" data-nama="${esc(p[1])}" data-sistem="${p[5]}" value="${p[5]}" style="width:70px; text-align:center; border:1px solid #ddd; border-radius:4px; padding:4px;"></td></tr>`;
       });
       html += '</tbody></table>';
