@@ -130,10 +130,10 @@
       <div class="login-logo-wrap"><img id="loginLogo" src="https://z-cdn-media.chatglm.cn/files/dc6c73f6-138a-412e-a264-31156515be3c.png?auth_key=1884567107-72bf1055260449dc8458f2ae15aa7234-0-4942ebeed415e86d99ac303657546dae" alt="Logo"></div>
       <h2>Benk cell</h2>
       <p>Silakan login untuk melanjutkan</p>
-      <select id="loginUsername" class="login-input" style="cursor:pointer;" autocomplete="off"><option value="">Memuat daftar user...</option></select>
+      <select id="loginUsername" class="login-input" style="cursor:pointer;" autocomplete="off" aria-label="Pilih Nama Pengguna"><option value="">Memuat daftar user...</option></select>
       
       <div class="password-wrap">
-        <input type="password" id="loginPassword" class="login-input" placeholder="Password" autocomplete="off" onkeydown="if(event.key==='Enter') doLogin()">
+        <input type="password" id="loginPassword" class="login-input" placeholder="Password" autocomplete="off" aria-label="Password" onkeydown="if(event.key==='Enter') doLogin()">
         <div id="togglePassBtn" class="toggle-pass" onclick="togglePassVisibility()">
           <svg id="eyeOpen" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
           <svg id="eyeClosed" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
@@ -204,14 +204,14 @@
               <div class="cart-items" id="keranjangContainer"><div style="text-align:center; color:#999; margin-top:50px;">Keranjang kosong</div></div>
               <div class="cart-footer">
                 <div class="pay-row"><span>Subtotal</span><span id="subTotalText">Rp 0</span></div>
-                <div class="pay-row"><span>Diskon (Ctrl+D)</span><div class="pay-input-group"><select id="diskonType" onchange="hitungTotal()"><option value="rp">Rp</option><option value="%">%</option></select><input type="text" id="diskonInput" value="0" oninput="formatRupiah(this); hitungTotal()" tabindex="1"></div></div>
+                <div class="pay-row"><span>Diskon (Ctrl+D)</span><div class="pay-input-group"><select id="diskonType" aria-label="Tipe Diskon" onchange="hitungTotal()"><option value="rp">Rp</option><option value="%">%</option></select><input type="text" id="diskonInput" aria-label="Jumlah Diskon" value="0" oninput="formatRupiah(this); hitungTotal()" tabindex="1"></div></div>
                 
                                <div class="pay-row"><span>Pakai Tukar Tambah?</span><input type="checkbox" id="useTukarTambah" onchange="toggleTukarTambah()"></div>
                 <div id="ttSummary" class="hidden"></div>
 
-                <div class="pay-row"><span>Pilih Garansi</span><select id="masaGaransi"><option value="0">Tidak Bergaransi</option><option value="1">1 Bulan (Toko)</option><option value="3">3 Bulan (Toko)</option><option value="6">6 Bulan (Toko)</option><option value="12">12 Bulan (Distributor)</option><option value="24">24 Bulan (Ibox)</option></select></div>
+                <div class="pay-row"><span>Pilih Garansi</span><select id="masaGaransi" aria-label="Pilih Masa Garansi"><option value="0">Tidak Bergaransi</option><option value="1">1 Bulan (Toko)</option><option value="3">3 Bulan (Toko)</option><option value="6">6 Bulan (Toko)</option><option value="12">12 Bulan (Distributor)</option><option value="24">24 Bulan (Ibox)</option></select></div>
                 
-                <div class="pay-row"><span>Metode Bayar</span><select id="metodeBayar" onchange="toggleCicilanInput()">
+                <div class="pay-row"><span>Metode Bayar</span><select id="metodeBayar" aria-label="Pilih Metode Pembayaran" onchange="toggleCicilanInput()">
                   <option value="Cash">Cash</option>
                   <option value="QRIS">QRIS</option>
                   <option value="Transfer BCA">Transfer BCA</option>
