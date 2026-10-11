@@ -2351,6 +2351,151 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
         throw new Error('Belum ada printer terhubung. Hubungkan di menu Pengaturan Printer.');
       }
     }
+
+    /* ============ PATCH: PRINTER SUPER STABIL v2 (jangan dobel tempel) ============ */
+(function() {
+  if (typeof window.bleDevice === 'undefined') window.bleDevice = null;
+  let blePrinting = false;
+  let bleQueue = Promise.resolve();
+
+  async function ensureBle() {
+    const dev = window.bleDevice;
+    if (!dev) throw new Error('Printer Bluetooth belum pernah terhubung. Hubungkan dulu di menu Printer.');
+    const maxTry = 3;
+    for (let a = 1; a <= maxTry; a++) {
+      try {
+        if (dev.gatt.connected && bleChar) return;
+        const st = $('bleStatus'); if (st) st.textContent = 'Status: Menyambung ulang otomatis (' + a + '/' + maxTry + ')...';
+        bleChar = null;
+        if (!dev.gatt.connected) await dev.gatt.connect();
+        const svc = await dev.gatt.getPrimaryService(BLE_SERVICE);
+        bleChar = await svc.getCharacteristic(BLE_CHAR);
+        const st2 = $('bleStatus'); if (st2) st2.textContent = 'Status: Terhubung — ' + (dev.name || 'Printer BLE');
+        return;
+      } catch (e) {
+        if (a === maxTry) throw new Error('Printer tidak mau nyambung setelah ' + maxTry + ' percobaan. Cek: printer nyala & tidak sedang nyambung ke HP lain.');
+        await new Promise(r => setTimeout(r, 1200));
+      }
+    }
+  }
+
+  function blePrint(bytes) {
+    bleQueue = bleQueue.then(() => doBlePrint(bytes)).catch(() => {});
+    return bleQueue;
+  }
+  async function doBlePrint(bytes) {
+    if (blePrinting) throw new Error('Masih ada print yang berjalan, tunggu sebentar.');
+    blePrinting = true;
+    try {
+      const CHUNK = 160;
+      for (let i = 0; i < bytes.length; i += CHUNK) {
+        const chunk = bytes.slice(i, i + CHUNK);
+        let ok = false;
+        for (let t = 0; t < 3 && !ok; t++) {
+          try {
+            if (bleChar.writeValueWithoutResponse) await bleChar.writeValueWithoutResponse(chunk);
+            else await bleChar.writeValue(chunk);
+            ok = true;
+          } catch (e) {
+            if (t === 2) throw e;
+            await ensureBle();
+            await new Promise(r => setTimeout(r, 250));
+          }
+        }
+        await new Promise(r => setTimeout(r, 20));
+      }
+      await new Promise(r => setTimeout(r, 350));
+    } finally { blePrinting = false; }
+  }
+
+  window.printStrukEscPos = async function() {
+    if (!currentStruk) { toast('Tidak ada struk', true); return; }
+    const bytes = escposBytes(buildStrukText(currentStruk));
+    try {
+      if (window.bleDevice) {
+        try { await ensureBle(); await blePrint(bytes); }
+        catch (e1) {
+          await new Promise(r => setTimeout(r, 800));
+          await ensureBle();
+          await blePrint(bytes);
+        }
+      } else if (usbDevice) { await ensureUsb(); await usbPrint(bytes); }
+      else toast('Hubungkan printer dulu di menu Printer', true);
+    } catch (e) { toast('Gagal print: ' + e.message, true); }
+  };
+
+  window.testPrint = async function() {
+    const t = { id: 'TEST-PRINT', tgl: new Date().toISOString(), kasir: currentUser ? currentUser.username : 'Test', pelanggan: 'Pelanggan Uji', items: [{ nama: 'Produk Uji Cetak', varian: '', storage: '', imei: '', qty: 1, harga: 123456 }], total: 123456, metode: 'Cash', diskon: '0', diterima: 150000, kembalian: 26544 };
+    const bytes = escposBytes(buildStrukText(t));
+    try {
+      if (window.bleDevice) {
+        try { await ensureBle(); await blePrint(bytes); }
+        catch (e1) { await new Promise(r => setTimeout(r, 800)); await ensureBle(); await blePrint(bytes); }
+      } else if (usbDevice) { await ensureUsb(); await usbPrint(bytes); }
+      else toast('Hubungkan printer dulu', true);
+    } catch (e) { toast(e.message, true); }
+  };
+
+  window.connectBlePrinter = async function() {
+    if (!navigator.bluetooth) { toast('Web Bluetooth tidak didukung (pakai Chrome + HTTPS)', true); return; }
+    try {
+      let device;
+      try { device = await navigator.bluetooth.requestDevice({ filters: [{ services: [BLE_SERVICE] }] }); }
+      catch (e) { device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: [BLE_SERVICE] }); }
+      window.bleDevice = device;
+      device.addEventListener('gattserverdisconnected', () => {
+        bleChar = null;
+        const st = $('bleStatus'); if (st) st.textContent = 'Status: Terputus — akan sambung ulang otomatis saat print';
+      });
+      await ensureBle();
+      toast('Printer Bluetooth terhubung');
+    } catch (e) { const st = $('bleStatus'); if (st) st.textContent = 'Status: Gagal — ' + e.message; }
+  };
+
+  window.connectUsbPrinter = async function() {
+    if (!navigator.usb) { toast('WebUSB tidak didukung (pakai Chrome/Edge)', true); return; }
+    try {
+      const d = await navigator.usb.requestDevice({ filters: [{ classCode: 7 }] });
+      await d.open();
+      if (d.configuration === null) await d.selectConfiguration(1);
+      const iface = d.configuration.interfaces.find(i => i.alternates[0].interfaceClass === 7) || d.configuration.interfaces[0];
+      await d.claimInterface(iface.interfaceNumber);
+      usbDevice = d;
+      usbEndpoint = iface.alternates[0].endpoints.find(e => e.direction === 'out') || null;
+      $('usbStatus').textContent = 'Status: Terhubung — ' + (d.productName || 'Printer USB');
+      toast('Printer USB terhubung');
+    } catch (e) { $('usbStatus').textContent = 'Status: Gagal — ' + e.message; }
+  };
+
+  async function ensureUsb() {
+    if (!usbDevice) throw new Error('Printer USB belum terhubung.');
+    if (usbDevice.opened) return;
+    await usbDevice.open();
+    if (usbDevice.configuration === null) await usbDevice.selectConfiguration(1);
+    const iface = usbDevice.configuration.interfaces.find(i => i.alternates[0].interfaceClass === 7) || usbDevice.configuration.interfaces[0];
+    await usbDevice.claimInterface(iface.interfaceNumber);
+    usbEndpoint = iface.alternates[0].endpoints.find(e => e.direction === 'out') || null;
+  }
+
+  async function autoReconnectPrinter() {
+    try {
+      if (!navigator.bluetooth || !navigator.bluetooth.getDevices) return;
+      const devices = await navigator.bluetooth.getDevices();
+      if (!devices || !devices.length) return;
+      window.bleDevice = devices[0];
+      window.bleDevice.addEventListener('gattserverdisconnected', () => { bleChar = null; });
+      try {
+        await ensureBle();
+        toast('Printer tersambung otomatis');
+      } catch (e) {
+        const st = $('bleStatus'); if (st) st.textContent = 'Status: Siap — akan sambung otomatis saat print (nyalakan printernya)';
+      }
+    } catch (e) {}
+  }
+
+  autoReconnectPrinter();
+})();
+    
   </script>
 </body>
 </html>
