@@ -2495,6 +2495,28 @@ function resetRiwayatFilterToday() { let todayStr = wibToday(); document.getElem
 
   autoReconnectPrinter();
 })();
+
+    /* ============ PATCH: INIT ANTI-MATI (pastikan start app selalu jalan) ============ */
+(function() {
+  function bootInit() {
+    try { ensureToastContainer(); } catch (e) {}
+    try { if (window.innerWidth <= 900 && $('sidebar')) $('sidebar').classList.add('collapsed'); } catch (e) {}
+    try { loadLoginUsers(); } catch (e) {}
+    try { tryRestoreSession(); } catch (e) {}
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootInit);
+  } else {
+    bootInit(); // DOM sudah siap → langsung jalan
+  }
+  // Jaring pengaman: kalau 2.5 detik kemudian dropdown masih "Memuat...", coba lagi
+  setTimeout(function() {
+    const sel = $('loginUsername');
+    if (sel && sel.innerHTML.indexOf('Memuat') !== -1) {
+      try { loadLoginUsers(); } catch (e) {}
+    }
+  }, 2500);
+})();
     
   </script>
 </body>
